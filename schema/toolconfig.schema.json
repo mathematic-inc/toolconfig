@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://github.com/mathematic-inc/toolconfig/releases/download/v2026.10.1/toolconfig.schema.json",
+  "$id": "https://github.com/mathematic-inc/toolconfig/releases/download/v2026.10.2/toolconfig.schema.json",
   "title": "ToolConfig source",
   "description": "EditorConfig sections in TOML, with native options for each tool. ToolConfig generates .editorconfig and each tool's configuration file from it.",
   "type": "object",

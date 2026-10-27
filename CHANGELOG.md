@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026.10.2 (2026-10-27)
+
+### Features
+
+- Generated tool files are gitignored by default: `init` adds the managed `.gitignore` block to
+  a new source, and `--no-gitignore` commits them instead. `.editorconfig` and the state file
+  stay committed.
+- `check` accepts ignored files that are missing, as in a fresh clone, and still reports ignored
+  files that are stale or edited.
+
 ## 2026.10.1 (2026-10-27)
 
 ### Bug fixes

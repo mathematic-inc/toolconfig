@@ -480,6 +480,16 @@ fn init_creates_sources() {
     );
     assert!(project.ok(&["init"]).starts_with("Using"));
 
+    // New projects ignore generated tool files by default.
+    assert!(
+        project
+            .read(".gitignore")
+            .contains("# BEGIN TOOLCONFIG GENERATED FILES")
+    );
+    let committed = Project::new();
+    committed.ok(&["init", "--no-gitignore"]);
+    assert!(!committed.exists(".gitignore"));
+
     let pkl = Project::new();
     pkl.ok(&["init", "--format", "pkl"]);
     pkl.ok(&["generate"]);
@@ -597,4 +607,23 @@ fn watch_ignores_package_cache_activity() {
     assert_eq!(again, None, "cache activity triggered regeneration");
     assert!(edited.is_some(), "an edited import did not regenerate");
     assert!(project.read("rustfmt.toml").contains("max_width = 90"));
+}
+
+#[test]
+fn check_allows_missing_ignored_files() {
+    let project = example();
+    project.ok(&["init", "--gitignore"]);
+    project.ok(&["generate"]);
+    // A fresh clone lacks the ignored tool files, but must have .editorconfig.
+    std::fs::remove_file(project.path("rustfmt.toml")).unwrap();
+    std::fs::remove_file(project.path("python/ruff.toml")).unwrap();
+    assert!(project.ok(&["check"]).starts_with("Up to date"));
+    std::fs::remove_file(project.path(".editorconfig")).unwrap();
+    let stdout = String::from_utf8(project.run(&["check"]).stdout).unwrap();
+    assert_eq!(stdout, "missing\t.editorconfig\n");
+    project.ok(&["generate"]);
+    // An ignored file that exists is still checked.
+    project.write(".toolconfig.toml", &EXAMPLE.replace("\"2024\"", "\"2021\""));
+    let stdout = String::from_utf8(project.run(&["check"]).stdout).unwrap();
+    assert_eq!(stdout, "stale\trustfmt.toml\n");
 }

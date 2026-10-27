@@ -488,11 +488,24 @@ pub(crate) fn validate(plan: &Plan) -> Result<()> {
 /// Every difference between the plan and the files on disk, as `(status, path)` pairs.
 pub(crate) fn drift(plan: &Plan) -> Result<Vec<(&'static str, String)>> {
     let state = read_state(&plan.root)?;
+    let ignore_path = plan.root.join(".gitignore");
+    let ignore_bytes = read_snapshot(&ignore_path)?
+        .as_ref()
+        .map(Snapshot::bytes)
+        .transpose()?;
+    // Files the managed .gitignore block lists are local: a fresh clone lacks them until generated.
+    let managed = ignore::enabled(ignore_bytes.as_deref())?;
+    let ignored = if managed {
+        ignored_outputs(plan).into_iter().collect::<BTreeSet<_>>()
+    } else {
+        BTreeSet::new()
+    };
     let mut problems = Vec::new();
     for output in &plan.outputs {
         let shown = paths::relative(&plan.root, &output.path);
         let key = record_key(&plan.root, &output.path)?;
         match read_snapshot(&output.path)? {
+            None if ignored.contains(&output.path) => {}
             None => problems.push(("missing", shown)),
             Some(actual) => match state.outputs.get(&key) {
                 None => problems.push(("unowned", shown)),
@@ -517,14 +530,9 @@ pub(crate) fn drift(plan: &Plan) -> Result<Vec<(&'static str, String)>> {
             problems.push(("hand-written", paths::relative(&plan.root, path)));
         }
     }
-    let path = plan.root.join(".gitignore");
-    let bytes = read_snapshot(&path)?
-        .as_ref()
-        .map(Snapshot::bytes)
-        .transpose()?;
-    if ignore::enabled(bytes.as_deref())?
-        && ignore::update(&plan.root, &ignored_outputs(plan), bytes.as_deref())?.as_slice()
-            != bytes.as_deref().unwrap_or_default()
+    if managed
+        && ignore::update(&plan.root, &ignored_outputs(plan), ignore_bytes.as_deref())?.as_slice()
+            != ignore_bytes.as_deref().unwrap_or_default()
     {
         problems.push(("stale", ".gitignore".to_owned()));
     }

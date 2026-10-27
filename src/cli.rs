@@ -32,9 +32,13 @@ enum Command {
         /// The source syntax to create.
         #[arg(long, value_enum, default_value_t = Format::Toml)]
         format: Format,
-        /// Add a managed .gitignore block for generated files other than .editorconfig.
-        #[arg(long)]
+        /// Add the managed .gitignore block to an existing source too. A new source gets it
+        /// unless --no-gitignore is given.
+        #[arg(long, conflicts_with = "no_gitignore")]
         gitignore: bool,
+        /// Commit generated tool files instead of ignoring them.
+        #[arg(long)]
+        no_gitignore: bool,
     },
     /// Write .editorconfig files and native tool configuration.
     Generate {
@@ -84,7 +88,11 @@ pub(crate) fn run() -> Result<()> {
     let arguments = Arguments::parse();
     let requested = arguments.root.as_deref();
     match arguments.command {
-        Command::Init { format, gitignore } => init(requested, format, gitignore),
+        Command::Init {
+            format,
+            gitignore,
+            no_gitignore,
+        } => init(requested, format, gitignore, no_gitignore),
         Command::Generate { watch: true, .. } => watch::run(&project::find_root(requested)?),
         Command::Generate {
             watch: false,
@@ -162,7 +170,12 @@ fn state_root() -> Option<PathBuf> {
         .map(Path::to_path_buf)
 }
 
-fn init(requested: Option<&Path>, format: Format, gitignore: bool) -> Result<()> {
+fn init(
+    requested: Option<&Path>,
+    format: Format,
+    gitignore: bool,
+    no_gitignore: bool,
+) -> Result<()> {
     let cwd = std::env::current_dir()
         .context("cannot read the current directory")?
         .canonicalize()?;
@@ -206,7 +219,9 @@ fn init(requested: Option<&Path>, format: Format, gitignore: bool) -> Result<()>
             dir.display()
         ),
     };
-    if gitignore {
+    // Generated tool files are ignored by default. An existing project keeps its choice unless
+    // asked, so re-running init never starts ignoring files it commits.
+    if gitignore || (created && !no_gitignore) {
         let plan = build(&dir)?;
         publication::Project::acquire(&dir)?.establish_ignore(&plan)?;
     }

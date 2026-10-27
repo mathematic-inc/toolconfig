@@ -84,8 +84,10 @@ select = ["E", "F", "I"]
 ```
 
 Tools and editor extensions read these files through their normal discovery, so nothing else
-changes. Commit the generated files, including `.toolconfig-state/state.json`, and run
-`toolconfig check` in CI.
+changes. Generated tool files are gitignored by default, so run `toolconfig generate` after
+cloning, in a pre-commit hook or task runner, and in CI before the tools run. Commit the source,
+`.editorconfig` and `.toolconfig-state/state.json`: editors and other programs read `.editorconfig`
+directly, and the state file lets a fresh clone keep owning it.
 
 ## Installation
 
@@ -134,13 +136,13 @@ within a source.
     `dotnet_diagnostic.CA1822.severity = "warning"`, is written to `.editorconfig` as is.
 - Keep each section's tables together. Section order decides precedence, as in EditorConfig.
 
-Add `#:schema https://github.com/mathematic-inc/toolconfig/releases/download/v2026.10.1/toolconfig.schema.json`
+Add `#:schema https://github.com/mathematic-inc/toolconfig/releases/download/v2026.10.2/toolconfig.schema.json`
 at the top for completion in Taplo, Tombi and other TOML editors.
 
 ### Pkl sources
 
 ```pkl
-amends "package://github.com/mathematic-inc/toolconfig/releases/download/v2026.10.1/toolconfig@2026.10.1#/ToolConfig.pkl"
+amends "package://github.com/mathematic-inc/toolconfig/releases/download/v2026.10.2/toolconfig@2026.10.2#/ToolConfig.pkl"
 
 local width = 100
 
@@ -218,7 +220,7 @@ shfmt and ktlint read `.editorconfig` themselves; write their keys in sections.
 ## Commands
 
 ```text
-toolconfig [--root DIR] init [--format toml|pkl] [--gitignore]
+toolconfig [--root DIR] init [--format toml|pkl] [--gitignore | --no-gitignore]
 toolconfig [--root DIR] generate [--watch] [--strict]
 toolconfig [--root DIR] check [--strict]
 toolconfig [--root DIR] validate [--strict]
@@ -229,9 +231,9 @@ toolconfig [--root DIR] clean
 
 | Command | Effect |
 | --- | --- |
-| `init` | Create a root source, preserving an existing one. `--gitignore` adds a managed block for generated files other than `.editorconfig` |
+| `init` | Create a root source, preserving an existing one. A new source gets a managed `.gitignore` block listing the generated files other than `.editorconfig`; `--no-gitignore` commits them instead, and `--gitignore` adds the block to an existing project |
 | `generate` | Compile every output, check ownership and conflicts, then write. `--watch` regenerates on change and keeps the last good outputs on error |
-| `check` | Fail when a generated file is missing, modified, stale or obsolete. Use it in CI |
+| `check` | Fail when a generated file is modified, stale or obsolete, or missing when it is committed. Ignored files may be missing, as in a fresh clone. Use it in CI |
 | `validate` | Everything `generate` checks, without writing |
 | `list` | Each generated file with its format, status and source |
 | `explain` | Every generated key, its value and the source line it came from |
@@ -244,7 +246,8 @@ errors.
 
 ToolConfig only writes files it owns. `.toolconfig-state/state.json` records each generated
 path, relative to the root, with the hash of the bytes last written. Commit it: it carries no
-machine-specific data, and a fresh clone needs it to recognize the committed files.
+machine-specific data, and a fresh clone needs it to recognize the committed `.editorconfig`.
+Ignored files missing from a clone are simply generated again.
 
 ToolConfig refuses to overwrite hand-written files, files edited after generation, symlinks,
 and native files that compete with a generated one (`.prettierrc.yaml` beside a generated

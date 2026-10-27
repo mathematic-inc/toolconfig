@@ -72,5 +72,8 @@ unless its `Disable.MaxLineLength` option is set.
 4. Compare `.editorconfig` with the original. Only comments, formatting and the header should
    differ, unless you aligned values in step 3.
 5. Run the repository's formatters and linters. They should report what they reported before.
-6. Commit the source, the generated files and `.toolconfig-state/state.json`. Add
-   `toolconfig check` to CI, or to a pre-commit hook that runs `toolconfig generate`.
+6. Run `toolconfig init --gitignore` to add the managed `.gitignore` block, then
+   `git rm --cached` the generated tool files it lists; they stay on disk. Commit the source,
+   `.editorconfig`, `.gitignore` and `.toolconfig-state/state.json`.
+7. Make sure the tool files exist wherever tools run: add `toolconfig generate` to a pre-commit
+   hook or task runner and to CI before the formatters and linters, and `toolconfig check` to CI.
