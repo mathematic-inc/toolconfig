@@ -7,7 +7,7 @@ use anyhow::{Context, Result, bail};
 use pklr::{EvalCapabilities, Evaluator, FetchBudget, NativeCapabilities};
 
 use crate::catalog;
-use crate::inputs::{Inputs, digest};
+use crate::inputs::{Inputs, digest, within};
 use crate::model::{
     FileSpec, Origin, Property, Section, Settings, Source, ToolSettings, ToolTable,
 };
@@ -237,7 +237,7 @@ struct Tracking {
 
 impl Tracking {
     fn record(&self, path: &Path, bytes: Option<&[u8]>) -> pklr::Result<()> {
-        if path.starts_with(&self.cache) {
+        if within(path, &self.cache) {
             return Ok(());
         }
         let mut inputs = self
@@ -318,7 +318,7 @@ impl EvalCapabilities for Tracking {
             .inner
             .glob(base, pattern)?
             .into_iter()
-            .filter(|path| !path.starts_with(&self.cache))
+            .filter(|path| !within(path, &self.cache))
             .collect::<Vec<_>>();
         let mut recorded = self
             .recorded

@@ -55,7 +55,7 @@ impl Inputs {
     pub(crate) fn ignores(&self, path: &Path) -> bool {
         self.excluded
             .iter()
-            .any(|directory| path.starts_with(directory))
+            .any(|directory| within(path, directory))
     }
 
     /// Reads a file and records its fingerprint, or records that it is missing.
@@ -79,6 +79,21 @@ impl Inputs {
         self.globs.extend(other.globs);
         self.excluded.extend(other.excluded);
     }
+}
+
+/// Whether `path` lies in `directory`, which is canonical. Watchers and evaluators may report
+/// paths in another spelling, such as without Windows' `\\?\` prefix, so canonical forms are
+/// compared too; a removed file is judged by its parent.
+pub(crate) fn within(path: &Path, directory: &Path) -> bool {
+    path.starts_with(directory)
+        || path
+            .canonicalize()
+            .or_else(|_| {
+                path.parent()
+                    .ok_or(std::io::ErrorKind::NotFound)?
+                    .canonicalize()
+            })
+            .is_ok_and(|real| real.starts_with(directory))
 }
 
 pub(crate) fn fingerprint(path: &Path) -> Result<String> {

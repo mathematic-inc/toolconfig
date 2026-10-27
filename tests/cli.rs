@@ -527,3 +527,60 @@ fn examples_are_current() {
         );
     }
 }
+
+#[test]
+fn watch_ignores_package_cache_activity() {
+    use std::io::{BufRead, BufReader};
+    use std::process::Stdio;
+    use std::sync::mpsc;
+    use std::time::Duration;
+
+    let project = Project::new();
+    project.write(
+        ".toolconfig.pkl",
+        &format!(
+            "amends \"{}#/ToolConfig.pkl\"\n\nroot = true\n\ntoolconfig {{\n  tools = List(\"rustfmt\")\n}}\n",
+            format_args!(
+                "package://github.com/mathematic-inc/toolconfig/releases/download/v{0}/toolconfig@{0}",
+                env!("CARGO_PKG_VERSION")
+            )
+        ),
+    );
+    let mut child = Command::new(env!("CARGO_BIN_EXE_toolconfig"))
+        .args(["generate", "--watch"])
+        .current_dir(project.path(""))
+        .env_remove("TOOLCONFIG_ROOT")
+        .env("TOOLCONFIG_PKL_CACHE_DIR", project.path(".pkl-cache"))
+        .stderr(Stdio::piped())
+        .spawn()
+        .unwrap();
+    let (sender, lines) = mpsc::channel();
+    let stderr = child.stderr.take().unwrap();
+    std::thread::spawn(move || {
+        for line in BufReader::new(stderr).lines().map_while(Result::ok) {
+            if sender.send(line).is_err() {
+                break;
+            }
+        }
+    });
+    let generated = |timeout| {
+        lines
+            .recv_timeout(timeout)
+            .into_iter()
+            .chain(std::iter::from_fn(|| lines.recv_timeout(timeout).ok()))
+            .find(|line: &String| line.contains("generated"))
+    };
+    let first = generated(Duration::from_secs(60));
+    assert!(first.is_some(), "watch mode never generated");
+    let cache = std::fs::read_dir(project.path(".pkl-cache"))
+        .unwrap()
+        .next()
+        .unwrap()
+        .unwrap()
+        .path();
+    std::fs::write(cache.join("unrelated"), "cache activity").unwrap();
+    let again = generated(Duration::from_millis(1500));
+    let _ = child.kill();
+    let _ = child.wait();
+    assert_eq!(again, None, "cache activity triggered regeneration");
+}
