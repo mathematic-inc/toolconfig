@@ -1,0 +1,27 @@
+---
+source: tests/cli.rs
+expression: "project.read(\".toolconfig-state/state.json\")"
+---
+{
+  "version": 1,
+  "outputs": {
+    ".editorconfig": {
+      "hash": "b2493480ad1f3e9bd1f4e669ad9aab98b8208648ed34b4c6f4bc76611ca58f96"
+    },
+    ".oxfmtrc.json": {
+      "hash": "470c5a667ef5c952b3ea5c3c6ea080cb603ad6a7f0a13891e64d1b3bb7427a2b"
+    },
+    ".oxlintrc.json": {
+      "hash": "e69b2e5774c0948342d28df59624dae975295ab3237f78e0893742b4fa934d27"
+    },
+    "python/.editorconfig": {
+      "hash": "79ad5834a900e505afd2da015aa1dc193e5224702ab0f8b5976dcb102c6dc11b"
+    },
+    "python/ruff.toml": {
+      "hash": "0dfefda2b2442f8ed30749ab866a3b8d4c761409b8ead2f1f6c3868ed7a07590"
+    },
+    "rustfmt.toml": {
+      "hash": "7f51d63be8bf7c6981cb1d7ed3d7ff05eba9ec565f5197a44bacbcddde371dbe"
+    }
+  }
+}

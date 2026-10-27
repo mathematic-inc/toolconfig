@@ -1,0 +1,9 @@
+---
+source: tests/cli.rs
+expression: "project.read(\"rustfmt.toml\")"
+---
+hard_tabs = false
+tab_spaces = 4
+max_width = 100
+newline_style = "Unix"
+edition = "2024"

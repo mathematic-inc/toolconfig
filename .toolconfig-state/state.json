@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "outputs": {
+    ".editorconfig": {
+      "hash": "e9e261eae0b28b61a9b0f574cf9169a3c651cdc98a8539f08f75934726755332"
+    },
+    "ruff.toml": {
+      "hash": "ea2c1df5b76ab7136e6ed2327f130b7030630d499441f1bc85fdf74e3a59053b"
+    },
+    "rustfmt.toml": {
+      "hash": "7f51d63be8bf7c6981cb1d7ed3d7ff05eba9ec565f5197a44bacbcddde371dbe"
+    }
+  }
+}

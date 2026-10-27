@@ -1,0 +1,10 @@
+---
+source: tests/cli.rs
+expression: "project.read(\".oxlintrc.json\")"
+---
+{
+  "categories": {
+    "correctness": "deny",
+    "suspicious": "deny"
+  }
+}

@@ -1,0 +1,7 @@
+#:schema ../../../../schema/toolconfig.schema.json
+[toolconfig]
+tools = ["rustfmt"]
+
+["*.rs"]
+# This crate wraps at 80 columns; editors show the same ruler.
+max_line_length = 80

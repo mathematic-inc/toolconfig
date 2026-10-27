@@ -1,0 +1,6 @@
+{
+  "categories": {
+    "correctness": "deny",
+    "suspicious": "deny"
+  }
+}

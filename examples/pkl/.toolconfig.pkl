@@ -1,0 +1,43 @@
+amends "package://github.com/mathematic-inc/toolconfig/releases/download/v2026.10.0/toolconfig@2026.10.0#/ToolConfig.pkl"
+
+local width = 100
+local languages = List("rs", "py", "pyi")
+
+root = true
+
+toolconfig {
+  tools = List("rustfmt", "ruff", "oxfmt")
+}
+
+sections {
+  ["*"] {
+    end_of_line = "lf"
+    insert_final_newline = true
+    indent_style = "space"
+    indent_size = 2
+    max_line_length = width
+    oxfmt {
+      semi = false
+    }
+  }
+  ["*.{\(languages.join(","))}"] {
+    indent_size = 4
+  }
+  ["*.rs"] {
+    rustfmt {
+      edition = "2024"
+    }
+  }
+  ["*.{py,pyi}"] {
+    ruff {
+      lint {
+        select = List("E", "F", "I")
+      }
+    }
+  }
+  ["*.sh"] {
+    properties {
+      ["shell_variant"] = "bash"
+    }
+  }
+}

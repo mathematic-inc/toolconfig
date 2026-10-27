@@ -1,0 +1,278 @@
+[
+  {
+    "id": "actionlint",
+    "default": "yaml",
+    "formats": { "yaml": ".github/actionlint.yaml" },
+    "alternatives": [".github/actionlint.yaml", ".github/actionlint.yml"],
+    "extensions": ["yml", "yaml"]
+  },
+  {
+    "id": "buf",
+    "default": "yaml",
+    "formats": { "yaml": "buf.yaml" },
+    "alternatives": ["buf.yaml"],
+    "config": { "version": "v2" },
+    "extensions": ["proto"]
+  },
+  {
+    "id": "cargo-deny",
+    "default": "toml",
+    "formats": { "toml": "deny.toml" },
+    "alternatives": ["deny.toml"],
+    "extensions": []
+  },
+  {
+    "id": "csharpier",
+    "default": "yaml",
+    "formats": { "json": ".csharpierrc.json", "yaml": ".csharpierrc.yaml" },
+    "alternatives": [".csharpierrc", ".csharpierrc.json", ".csharpierrc.yaml"],
+    "extensions": ["cs", "csx"],
+    "projection": [
+      { "property": "indent_style", "path": ["useTabs"], "values": { "space": false, "tab": true }, "default": false },
+      { "property": "indent_width", "path": ["tabWidth"], "default": 4 },
+      { "property": "max_line_length", "path": ["printWidth"], "default": 100 },
+      { "property": "end_of_line", "path": ["endOfLine"], "values": { "lf": "lf", "crlf": "crlf" }, "default": "auto" }
+    ]
+  },
+  {
+    "id": "editorconfig-checker",
+    "default": "json",
+    "formats": { "json": ".editorconfig-checker.json" },
+    "alternatives": [".editorconfig-checker.json", ".ecrc"],
+    "extensions": []
+  },
+  {
+    "id": "gitleaks",
+    "default": "toml",
+    "formats": { "toml": ".gitleaks.toml" },
+    "alternatives": [".gitleaks.toml"],
+    "extensions": []
+  },
+  {
+    "id": "knip",
+    "default": "json",
+    "formats": { "json": "knip.json" },
+    "alternatives": [
+      "knip.json",
+      "knip.jsonc",
+      ".knip.json",
+      ".knip.jsonc",
+      "knip.ts",
+      "knip.js",
+      "knip.config.ts",
+      "knip.config.js"
+    ],
+    "manifest_key": "knip",
+    "extensions": []
+  },
+  {
+    "id": "lychee",
+    "default": "toml",
+    "formats": { "toml": "lychee.toml" },
+    "alternatives": ["lychee.toml", ".lychee.toml"],
+    "extensions": []
+  },
+  {
+    "id": "oxfmt",
+    "default": "json",
+    "formats": { "json": ".oxfmtrc.json" },
+    "alternatives": [".oxfmtrc.json", ".oxfmtrc.jsonc", "oxfmt.config.ts", "oxfmt.config.mts"],
+    "extensions": [
+      "js", "jsx", "mjs", "cjs", "ts", "tsx", "mts", "cts",
+      "json", "jsonc", "json5", "md", "markdown", "mdx", "html", "vue",
+      "css", "scss", "less", "yaml", "yml", "graphql", "gql", "hbs", "handlebars"
+    ],
+    "overrides": true,
+    "projection": [
+      { "property": "indent_style", "path": ["useTabs"], "values": { "space": false, "tab": true }, "default": false },
+      { "property": "indent_width", "path": ["tabWidth"], "default": 2 },
+      { "property": "max_line_length", "path": ["printWidth"], "default": 100 },
+      { "property": "end_of_line", "path": ["endOfLine"], "values": { "lf": "lf", "crlf": "crlf", "cr": "cr" }, "default": "lf" },
+      { "property": "insert_final_newline", "path": ["insertFinalNewline"], "default": true }
+    ]
+  },
+  {
+    "id": "oxlint",
+    "default": "json",
+    "formats": { "json": ".oxlintrc.json" },
+    "alternatives": [".oxlintrc.json", ".oxlintrc.jsonc", "oxlint.config.ts", "oxlint.config.mts"],
+    "extensions": ["js", "jsx", "mjs", "cjs", "ts", "tsx", "mts", "cts", "vue", "svelte", "astro"]
+  },
+  {
+    "id": "prettier",
+    "default": "json",
+    "formats": {
+      "json": ".prettierrc.json",
+      "yaml": ".prettierrc.yaml",
+      "toml": ".prettierrc.toml"
+    },
+    "alternatives": [
+      ".prettierrc",
+      ".prettierrc.json",
+      ".prettierrc.json5",
+      ".prettierrc.yml",
+      ".prettierrc.yaml",
+      ".prettierrc.toml",
+      ".prettierrc.js",
+      ".prettierrc.cjs",
+      ".prettierrc.mjs",
+      ".prettierrc.ts",
+      ".prettierrc.cts",
+      ".prettierrc.mts",
+      "prettier.config.js",
+      "prettier.config.cjs",
+      "prettier.config.mjs",
+      "prettier.config.ts",
+      "prettier.config.cts",
+      "prettier.config.mts"
+    ],
+    "manifest_key": "prettier",
+    "extensions": [
+      "js", "jsx", "mjs", "cjs", "ts", "tsx", "mts", "cts",
+      "json", "jsonc", "json5", "md", "markdown", "mdx", "html", "vue",
+      "css", "scss", "less", "yaml", "yml", "graphql", "gql", "hbs", "handlebars"
+    ],
+    "overrides": true,
+    "projection": [
+      { "property": "indent_style", "path": ["useTabs"], "values": { "space": false, "tab": true }, "default": false },
+      { "property": "indent_width", "path": ["tabWidth"], "default": 2 },
+      { "property": "max_line_length", "path": ["printWidth"], "default": 80 },
+      { "property": "end_of_line", "path": ["endOfLine"], "values": { "lf": "lf", "crlf": "crlf", "cr": "cr" }, "default": "lf" }
+    ]
+  },
+  {
+    "id": "ruff",
+    "default": "toml",
+    "formats": { "toml": "ruff.toml" },
+    "alternatives": ["ruff.toml", ".ruff.toml"],
+    "extensions": ["py", "pyi"],
+    "projection": [
+      { "property": "indent_style", "path": ["format", "indent-style"], "values": { "space": "space", "tab": "tab" }, "default": "space" },
+      { "property": "indent_width", "path": ["indent-width"], "default": 4 },
+      { "property": "max_line_length", "path": ["line-length"], "max": 320, "default": 88 },
+      { "property": "end_of_line", "path": ["format", "line-ending"], "values": { "lf": "lf", "crlf": "cr-lf" }, "default": "auto" }
+    ]
+  },
+  {
+    "id": "rumdl",
+    "default": "toml",
+    "formats": { "toml": ".rumdl.toml" },
+    "alternatives": [".rumdl.toml", "rumdl.toml", ".config/rumdl.toml"],
+    "extensions": ["md", "markdown"],
+    "projection": [{ "property": "max_line_length", "path": ["MD013", "line-length"] }]
+  },
+  {
+    "id": "rustfmt",
+    "default": "toml",
+    "formats": { "toml": "rustfmt.toml" },
+    "alternatives": ["rustfmt.toml", ".rustfmt.toml"],
+    "extensions": ["rs"],
+    "projection": [
+      { "property": "indent_style", "path": ["hard_tabs"], "values": { "space": false, "tab": true }, "default": false },
+      { "property": "indent_width", "path": ["tab_spaces"], "default": 4 },
+      { "property": "max_line_length", "path": ["max_width"], "default": 100 },
+      { "property": "end_of_line", "path": ["newline_style"], "values": { "lf": "Unix", "crlf": "Windows" }, "default": "Auto" }
+    ]
+  },
+  {
+    "id": "ryl",
+    "default": "toml",
+    "formats": { "toml": ".ryl.toml", "yaml": ".yamllint.yaml" },
+    "alternatives": [
+      "ryl.toml",
+      ".ryl.toml",
+      ".yamllint",
+      ".yamllint.yaml",
+      ".yamllint.yml",
+      ".config/.ryl.toml",
+      ".config/ryl.toml"
+    ],
+    "config": { "rules": { "key-duplicates": "enable" } },
+    "extensions": ["yaml", "yml"],
+    "projection": [
+      { "property": "indent_style", "path": ["rules", "indentation", "spaces"], "values": { "space": null } },
+      { "property": "indent_width", "path": ["rules", "indentation", "spaces"], "default": "consistent" },
+      { "property": "max_line_length", "path": ["rules", "line-length", "max"], "default": 80 },
+      { "property": "end_of_line", "path": ["rules", "new-lines", "type"], "values": { "lf": "unix", "crlf": "dos" }, "default": "unix" }
+    ]
+  },
+  {
+    "id": "sqlfluff",
+    "default": "ini",
+    "formats": { "ini": ".sqlfluff" },
+    "alternatives": [".sqlfluff"],
+    "extensions": ["sql"],
+    "projection": [
+      { "property": "max_line_length", "path": ["sqlfluff", "max_line_length"], "default": 80 },
+      { "property": "indent_style", "path": ["sqlfluff:indentation", "indent_unit"], "values": { "space": "space", "tab": "tab" }, "default": "space" },
+      { "property": "indent_width", "path": ["sqlfluff:indentation", "tab_space_size"], "default": 4 }
+    ]
+  },
+  {
+    "id": "tombi",
+    "default": "toml",
+    "formats": { "toml": "tombi.toml" },
+    "alternatives": ["tombi.toml", ".tombi.toml", ".config/tombi.toml"],
+    "extensions": ["toml"],
+    "projection": [
+      { "property": "indent_style", "path": ["format", "rules", "indent-style"], "values": { "space": "space", "tab": "tab" }, "default": "space" },
+      { "property": "indent_width", "path": ["format", "rules", "indent-width"], "default": 2 },
+      { "property": "max_line_length", "path": ["format", "rules", "line-width"], "max": 255 },
+      { "property": "end_of_line", "path": ["format", "rules", "line-ending"], "values": { "lf": "lf", "crlf": "crlf" }, "default": "auto" }
+    ]
+  },
+  {
+    "id": "ty",
+    "default": "toml",
+    "formats": { "toml": "ty.toml" },
+    "alternatives": ["ty.toml"],
+    "extensions": ["py", "pyi"]
+  },
+  {
+    "id": "typespec",
+    "default": "yaml",
+    "formats": { "yaml": "tspconfig.yaml" },
+    "alternatives": ["tspconfig.yaml"],
+    "extensions": ["tsp"]
+  },
+  {
+    "id": "typos",
+    "default": "toml",
+    "formats": { "toml": "typos.toml" },
+    "alternatives": ["typos.toml", ".typos.toml", "_typos.toml"],
+    "extensions": [],
+    "projection": [
+      {
+        "property": "spelling_language",
+        "path": ["default", "locale"],
+        "values": { "en": "en", "en-us": "en-us", "en-gb": "en-gb", "en-ca": "en-ca", "en-au": "en-au" }
+      }
+    ]
+  },
+  {
+    "id": "yamlfmt",
+    "default": "yaml",
+    "formats": { "yaml": ".yamlfmt" },
+    "alternatives": [".yamlfmt", "yamlfmt.yml", ".yamlfmt.yml", "yamlfmt.yaml", ".yamlfmt.yaml"],
+    "extensions": ["yaml", "yml"],
+    "projection": [
+      { "property": "indent_style", "path": ["formatter", "indent"], "values": { "space": null } },
+      { "property": "indent_width", "path": ["formatter", "indent"], "default": 2 },
+      { "property": "max_line_length", "path": ["formatter", "max_line_length"], "default": 0 },
+      { "property": "end_of_line", "path": ["formatter", "line_ending"], "values": { "lf": "lf", "crlf": "crlf" }, "default": "lf" }
+    ]
+  },
+  {
+    "id": "yamllint",
+    "default": "yaml",
+    "formats": { "yaml": ".yamllint.yaml" },
+    "alternatives": [".yamllint", ".yamllint.yaml", ".yamllint.yml"],
+    "extensions": ["yaml", "yml"],
+    "projection": [
+      { "property": "indent_style", "path": ["rules", "indentation", "spaces"], "values": { "space": null } },
+      { "property": "indent_width", "path": ["rules", "indentation", "spaces"], "default": "consistent" },
+      { "property": "max_line_length", "path": ["rules", "line-length", "max"], "default": 80 },
+      { "property": "end_of_line", "path": ["rules", "new-lines", "type"], "values": { "lf": "unix", "crlf": "dos" }, "default": "unix" }
+    ]
+  }
+]

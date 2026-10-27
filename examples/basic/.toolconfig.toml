@@ -1,0 +1,30 @@
+#:schema ../../schema/toolconfig.schema.json
+root = true
+
+[toolconfig]
+tools = ["rustfmt", "prettier", "ruff"]
+
+["*"]
+end_of_line = "lf"
+insert_final_newline = true
+indent_style = "space"
+indent_size = 2
+max_line_length = 100
+
+["*.{rs,py,pyi}"]
+indent_size = 4
+
+["*.rs"]
+rustfmt.edition = "2024"
+
+["*.md"]
+max_line_length = 80
+prettier.proseWrap = "always"
+
+["*.{py,pyi}".ruff.lint]
+select = ["E", "F", "I"]
+
+["*.sh"]
+# shfmt reads these from .editorconfig directly.
+shell_variant = "bash"
+switch_case_indent = true

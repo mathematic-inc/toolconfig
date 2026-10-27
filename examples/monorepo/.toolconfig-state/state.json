@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "outputs": {
+    ".editorconfig": {
+      "hash": "bd3b78d3998feef62f1d2987459c01cd5abec33c838c3171651bf2993697df22"
+    },
+    ".oxlintrc.json": {
+      "hash": "e69b2e5774c0948342d28df59624dae975295ab3237f78e0893742b4fa934d27"
+    },
+    ".prettierignore": {
+      "hash": "efaf31c19c29d147f5125f50c0c9eccf08cd50c72538dcb18f663f0fca97554e"
+    },
+    ".prettierrc.json": {
+      "hash": "62dab10ae56a3637b6568b6b169bddea3cada430405896bdddab453de39cc2e6"
+    },
+    "crates/core/.editorconfig": {
+      "hash": "24d41fa4981fc1addf78f40a2a0d42733ed6f6baafee23307807000133934f00"
+    },
+    "crates/core/rustfmt.toml": {
+      "hash": "b260db3fab7e5e52c4230ca0ee93a151cc7cd4c75f7b4ba05856bb2d25e38183"
+    },
+    "services/api/ruff.toml": {
+      "hash": "dfb1f9ce67b788387f69db3ca3f81d7bc2d2c836e5e4607f97ad1dbbdd5406b3"
+    },
+    "typos.toml": {
+      "hash": "2cf17b76e4ec349aeea9ce5e5a0ccbb04073dfedf2964fd619fab62894eb06ee"
+    }
+  }
+}

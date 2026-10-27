@@ -1,0 +1,11 @@
+---
+source: tests/cli.rs
+expression: "project.ok(&[\"list\"])"
+---
+STATUS	FORMAT	OUTPUT	SOURCE
+managed	editorconfig	.editorconfig	.toolconfig.toml
+managed	json	.oxfmtrc.json	.toolconfig.toml
+managed	json	.oxlintrc.json	.toolconfig.toml
+managed	editorconfig	python/.editorconfig	python/.toolconfig.toml
+managed	toml	python/ruff.toml	python/.toolconfig.toml
+managed	toml	rustfmt.toml	.toolconfig.toml

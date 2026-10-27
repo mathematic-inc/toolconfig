@@ -1,0 +1,9 @@
+indent-width = 4
+line-length = 100
+
+[format]
+indent-style = "space"
+line-ending = "lf"
+
+[lint]
+select = ["E", "F", "I"]

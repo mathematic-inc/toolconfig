@@ -1,0 +1,31 @@
+#:schema ./schema/toolconfig.schema.json
+# ToolConfig's own editor and tool configuration.
+root = true
+
+[toolconfig]
+tools = ["rustfmt", "ruff"]
+
+["*"]
+charset = "utf-8"
+end_of_line = "lf"
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = "space"
+indent_size = 2
+
+["*.{rs,py,pyi}"]
+indent_size = 4
+max_line_length = 100
+
+["*.rs"]
+rustfmt.edition = "2024"
+
+["*.{py,pyi}".ruff]
+target-version = "py312"
+
+["*.md"]
+trim_trailing_whitespace = false
+
+["*.snap"]
+trim_trailing_whitespace = false
+insert_final_newline = "unset"

@@ -1,0 +1,1196 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/mathematic-inc/toolconfig/releases/download/v2026.10.0/toolconfig.schema.json",
+  "title": "ToolConfig source",
+  "description": "EditorConfig sections in TOML, with native options for each tool. ToolConfig generates .editorconfig and each tool's configuration file from it.",
+  "type": "object",
+  "properties": {
+    "root": {
+      "description": "Stops the EditorConfig cascade at this directory. The project's top source must set it.",
+      "type": "boolean"
+    },
+    "toolconfig": {
+      "description": "Settings for the files generated in this directory.",
+      "type": "object",
+      "properties": {
+        "tools": {
+          "description": "Tools whose native configuration file is generated in this directory.",
+          "type": "array",
+          "items": {
+            "enum": [
+              "actionlint",
+              "buf",
+              "cargo-deny",
+              "csharpier",
+              "editorconfig-checker",
+              "gitleaks",
+              "knip",
+              "lychee",
+              "oxfmt",
+              "oxlint",
+              "prettier",
+              "ruff",
+              "rumdl",
+              "rustfmt",
+              "ryl",
+              "sqlfluff",
+              "tombi",
+              "ty",
+              "typespec",
+              "typos",
+              "yamlfmt",
+              "yamllint"
+            ]
+          },
+          "uniqueItems": true
+        },
+        "files": {
+          "description": "Additional generated files, keyed by label.",
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/file"
+          }
+        },
+        "actionlint": {
+          "description": "How actionlint is generated.",
+          "type": "object",
+          "properties": {
+            "format": {
+              "description": "The native format to write.",
+              "enum": [
+                "yaml"
+              ]
+            },
+            "path": {
+              "description": "The native filename to write, among those the tool reads.",
+              "enum": [
+                ".github/actionlint.yaml",
+                ".github/actionlint.yml"
+              ]
+            },
+            "skip": {
+              "description": "Standard properties not projected into this tool; \"*\" skips all.",
+              "type": "array",
+              "items": {
+                "enum": [
+                  "*",
+                  "indent_style",
+                  "indent_size",
+                  "tab_width",
+                  "end_of_line",
+                  "charset",
+                  "trim_trailing_whitespace",
+                  "insert_final_newline",
+                  "max_line_length",
+                  "spelling_language"
+                ]
+              },
+              "uniqueItems": true
+            }
+          },
+          "additionalProperties": false
+        },
+        "buf": {
+          "description": "How buf is generated.",
+          "type": "object",
+          "properties": {
+            "format": {
+              "description": "The native format to write.",
+              "enum": [
+                "yaml"
+              ]
+            },
+            "path": {
+              "description": "The native filename to write, among those the tool reads.",
+              "enum": [
+                "buf.yaml"
+              ]
+            },
+            "skip": {
+              "description": "Standard properties not projected into this tool; \"*\" skips all.",
+              "type": "array",
+              "items": {
+                "enum": [
+                  "*",
+                  "indent_style",
+                  "indent_size",
+                  "tab_width",
+                  "end_of_line",
+                  "charset",
+                  "trim_trailing_whitespace",
+                  "insert_final_newline",
+                  "max_line_length",
+                  "spelling_language"
+                ]
+              },
+              "uniqueItems": true
+            }
+          },
+          "additionalProperties": false
+        },
+        "cargo-deny": {
+          "description": "How cargo-deny is generated.",
+          "type": "object",
+          "properties": {
+            "format": {
+              "description": "The native format to write.",
+              "enum": [
+                "toml"
+              ]
+            },
+            "path": {
+              "description": "The native filename to write, among those the tool reads.",
+              "enum": [
+                "deny.toml"
+              ]
+            },
+            "skip": {
+              "description": "Standard properties not projected into this tool; \"*\" skips all.",
+              "type": "array",
+              "items": {
+                "enum": [
+                  "*",
+                  "indent_style",
+                  "indent_size",
+                  "tab_width",
+                  "end_of_line",
+                  "charset",
+                  "trim_trailing_whitespace",
+                  "insert_final_newline",
+                  "max_line_length",
+                  "spelling_language"
+                ]
+              },
+              "uniqueItems": true
+            }
+          },
+          "additionalProperties": false
+        },
+        "csharpier": {
+          "description": "How csharpier is generated.",
+          "type": "object",
+          "properties": {
+            "format": {
+              "description": "The native format to write.",
+              "enum": [
+                "json",
+                "yaml"
+              ]
+            },
+            "path": {
+              "description": "The native filename to write, among those the tool reads.",
+              "enum": [
+                ".csharpierrc",
+                ".csharpierrc.json",
+                ".csharpierrc.yaml"
+              ]
+            },
+            "skip": {
+              "description": "Standard properties not projected into this tool; \"*\" skips all.",
+              "type": "array",
+              "items": {
+                "enum": [
+                  "*",
+                  "indent_style",
+                  "indent_size",
+                  "tab_width",
+                  "end_of_line",
+                  "charset",
+                  "trim_trailing_whitespace",
+                  "insert_final_newline",
+                  "max_line_length",
+                  "spelling_language"
+                ]
+              },
+              "uniqueItems": true
+            }
+          },
+          "additionalProperties": false
+        },
+        "editorconfig-checker": {
+          "description": "How editorconfig-checker is generated.",
+          "type": "object",
+          "properties": {
+            "format": {
+              "description": "The native format to write.",
+              "enum": [
+                "json"
+              ]
+            },
+            "path": {
+              "description": "The native filename to write, among those the tool reads.",
+              "enum": [
+                ".editorconfig-checker.json",
+                ".ecrc"
+              ]
+            },
+            "skip": {
+              "description": "Standard properties not projected into this tool; \"*\" skips all.",
+              "type": "array",
+              "items": {
+                "enum": [
+                  "*",
+                  "indent_style",
+                  "indent_size",
+                  "tab_width",
+                  "end_of_line",
+                  "charset",
+                  "trim_trailing_whitespace",
+                  "insert_final_newline",
+                  "max_line_length",
+                  "spelling_language"
+                ]
+              },
+              "uniqueItems": true
+            }
+          },
+          "additionalProperties": false
+        },
+        "gitleaks": {
+          "description": "How gitleaks is generated.",
+          "type": "object",
+          "properties": {
+            "format": {
+              "description": "The native format to write.",
+              "enum": [
+                "toml"
+              ]
+            },
+            "path": {
+              "description": "The native filename to write, among those the tool reads.",
+              "enum": [
+                ".gitleaks.toml"
+              ]
+            },
+            "skip": {
+              "description": "Standard properties not projected into this tool; \"*\" skips all.",
+              "type": "array",
+              "items": {
+                "enum": [
+                  "*",
+                  "indent_style",
+                  "indent_size",
+                  "tab_width",
+                  "end_of_line",
+                  "charset",
+                  "trim_trailing_whitespace",
+                  "insert_final_newline",
+                  "max_line_length",
+                  "spelling_language"
+                ]
+              },
+              "uniqueItems": true
+            }
+          },
+          "additionalProperties": false
+        },
+        "knip": {
+          "description": "How knip is generated.",
+          "type": "object",
+          "properties": {
+            "format": {
+              "description": "The native format to write.",
+              "enum": [
+                "json"
+              ]
+            },
+            "path": {
+              "description": "The native filename to write, among those the tool reads.",
+              "enum": [
+                "knip.json",
+                "knip.jsonc",
+                ".knip.json",
+                ".knip.jsonc",
+                "knip.ts",
+                "knip.js",
+                "knip.config.ts",
+                "knip.config.js"
+              ]
+            },
+            "skip": {
+              "description": "Standard properties not projected into this tool; \"*\" skips all.",
+              "type": "array",
+              "items": {
+                "enum": [
+                  "*",
+                  "indent_style",
+                  "indent_size",
+                  "tab_width",
+                  "end_of_line",
+                  "charset",
+                  "trim_trailing_whitespace",
+                  "insert_final_newline",
+                  "max_line_length",
+                  "spelling_language"
+                ]
+              },
+              "uniqueItems": true
+            }
+          },
+          "additionalProperties": false
+        },
+        "lychee": {
+          "description": "How lychee is generated.",
+          "type": "object",
+          "properties": {
+            "format": {
+              "description": "The native format to write.",
+              "enum": [
+                "toml"
+              ]
+            },
+            "path": {
+              "description": "The native filename to write, among those the tool reads.",
+              "enum": [
+                "lychee.toml",
+                ".lychee.toml"
+              ]
+            },
+            "skip": {
+              "description": "Standard properties not projected into this tool; \"*\" skips all.",
+              "type": "array",
+              "items": {
+                "enum": [
+                  "*",
+                  "indent_style",
+                  "indent_size",
+                  "tab_width",
+                  "end_of_line",
+                  "charset",
+                  "trim_trailing_whitespace",
+                  "insert_final_newline",
+                  "max_line_length",
+                  "spelling_language"
+                ]
+              },
+              "uniqueItems": true
+            }
+          },
+          "additionalProperties": false
+        },
+        "oxfmt": {
+          "description": "How oxfmt is generated.",
+          "type": "object",
+          "properties": {
+            "format": {
+              "description": "The native format to write.",
+              "enum": [
+                "json"
+              ]
+            },
+            "path": {
+              "description": "The native filename to write, among those the tool reads.",
+              "enum": [
+                ".oxfmtrc.json",
+                ".oxfmtrc.jsonc",
+                "oxfmt.config.ts",
+                "oxfmt.config.mts"
+              ]
+            },
+            "skip": {
+              "description": "Standard properties not projected into this tool; \"*\" skips all.",
+              "type": "array",
+              "items": {
+                "enum": [
+                  "*",
+                  "indent_style",
+                  "indent_size",
+                  "tab_width",
+                  "end_of_line",
+                  "charset",
+                  "trim_trailing_whitespace",
+                  "insert_final_newline",
+                  "max_line_length",
+                  "spelling_language"
+                ]
+              },
+              "uniqueItems": true
+            }
+          },
+          "additionalProperties": false
+        },
+        "oxlint": {
+          "description": "How oxlint is generated.",
+          "type": "object",
+          "properties": {
+            "format": {
+              "description": "The native format to write.",
+              "enum": [
+                "json"
+              ]
+            },
+            "path": {
+              "description": "The native filename to write, among those the tool reads.",
+              "enum": [
+                ".oxlintrc.json",
+                ".oxlintrc.jsonc",
+                "oxlint.config.ts",
+                "oxlint.config.mts"
+              ]
+            },
+            "skip": {
+              "description": "Standard properties not projected into this tool; \"*\" skips all.",
+              "type": "array",
+              "items": {
+                "enum": [
+                  "*",
+                  "indent_style",
+                  "indent_size",
+                  "tab_width",
+                  "end_of_line",
+                  "charset",
+                  "trim_trailing_whitespace",
+                  "insert_final_newline",
+                  "max_line_length",
+                  "spelling_language"
+                ]
+              },
+              "uniqueItems": true
+            }
+          },
+          "additionalProperties": false
+        },
+        "prettier": {
+          "description": "How prettier is generated.",
+          "type": "object",
+          "properties": {
+            "format": {
+              "description": "The native format to write.",
+              "enum": [
+                "json",
+                "toml",
+                "yaml"
+              ]
+            },
+            "path": {
+              "description": "The native filename to write, among those the tool reads.",
+              "enum": [
+                ".prettierrc",
+                ".prettierrc.json",
+                ".prettierrc.json5",
+                ".prettierrc.yml",
+                ".prettierrc.yaml",
+                ".prettierrc.toml",
+                ".prettierrc.js",
+                ".prettierrc.cjs",
+                ".prettierrc.mjs",
+                ".prettierrc.ts",
+                ".prettierrc.cts",
+                ".prettierrc.mts",
+                "prettier.config.js",
+                "prettier.config.cjs",
+                "prettier.config.mjs",
+                "prettier.config.ts",
+                "prettier.config.cts",
+                "prettier.config.mts"
+              ]
+            },
+            "skip": {
+              "description": "Standard properties not projected into this tool; \"*\" skips all.",
+              "type": "array",
+              "items": {
+                "enum": [
+                  "*",
+                  "indent_style",
+                  "indent_size",
+                  "tab_width",
+                  "end_of_line",
+                  "charset",
+                  "trim_trailing_whitespace",
+                  "insert_final_newline",
+                  "max_line_length",
+                  "spelling_language"
+                ]
+              },
+              "uniqueItems": true
+            }
+          },
+          "additionalProperties": false
+        },
+        "ruff": {
+          "description": "How ruff is generated.",
+          "type": "object",
+          "properties": {
+            "format": {
+              "description": "The native format to write.",
+              "enum": [
+                "toml"
+              ]
+            },
+            "path": {
+              "description": "The native filename to write, among those the tool reads.",
+              "enum": [
+                "ruff.toml",
+                ".ruff.toml"
+              ]
+            },
+            "skip": {
+              "description": "Standard properties not projected into this tool; \"*\" skips all.",
+              "type": "array",
+              "items": {
+                "enum": [
+                  "*",
+                  "indent_style",
+                  "indent_size",
+                  "tab_width",
+                  "end_of_line",
+                  "charset",
+                  "trim_trailing_whitespace",
+                  "insert_final_newline",
+                  "max_line_length",
+                  "spelling_language"
+                ]
+              },
+              "uniqueItems": true
+            }
+          },
+          "additionalProperties": false
+        },
+        "rumdl": {
+          "description": "How rumdl is generated.",
+          "type": "object",
+          "properties": {
+            "format": {
+              "description": "The native format to write.",
+              "enum": [
+                "toml"
+              ]
+            },
+            "path": {
+              "description": "The native filename to write, among those the tool reads.",
+              "enum": [
+                ".rumdl.toml",
+                "rumdl.toml",
+                ".config/rumdl.toml"
+              ]
+            },
+            "skip": {
+              "description": "Standard properties not projected into this tool; \"*\" skips all.",
+              "type": "array",
+              "items": {
+                "enum": [
+                  "*",
+                  "indent_style",
+                  "indent_size",
+                  "tab_width",
+                  "end_of_line",
+                  "charset",
+                  "trim_trailing_whitespace",
+                  "insert_final_newline",
+                  "max_line_length",
+                  "spelling_language"
+                ]
+              },
+              "uniqueItems": true
+            }
+          },
+          "additionalProperties": false
+        },
+        "rustfmt": {
+          "description": "How rustfmt is generated.",
+          "type": "object",
+          "properties": {
+            "format": {
+              "description": "The native format to write.",
+              "enum": [
+                "toml"
+              ]
+            },
+            "path": {
+              "description": "The native filename to write, among those the tool reads.",
+              "enum": [
+                "rustfmt.toml",
+                ".rustfmt.toml"
+              ]
+            },
+            "skip": {
+              "description": "Standard properties not projected into this tool; \"*\" skips all.",
+              "type": "array",
+              "items": {
+                "enum": [
+                  "*",
+                  "indent_style",
+                  "indent_size",
+                  "tab_width",
+                  "end_of_line",
+                  "charset",
+                  "trim_trailing_whitespace",
+                  "insert_final_newline",
+                  "max_line_length",
+                  "spelling_language"
+                ]
+              },
+              "uniqueItems": true
+            }
+          },
+          "additionalProperties": false
+        },
+        "ryl": {
+          "description": "How ryl is generated.",
+          "type": "object",
+          "properties": {
+            "format": {
+              "description": "The native format to write.",
+              "enum": [
+                "toml",
+                "yaml"
+              ]
+            },
+            "path": {
+              "description": "The native filename to write, among those the tool reads.",
+              "enum": [
+                "ryl.toml",
+                ".ryl.toml",
+                ".yamllint",
+                ".yamllint.yaml",
+                ".yamllint.yml",
+                ".config/.ryl.toml",
+                ".config/ryl.toml"
+              ]
+            },
+            "skip": {
+              "description": "Standard properties not projected into this tool; \"*\" skips all.",
+              "type": "array",
+              "items": {
+                "enum": [
+                  "*",
+                  "indent_style",
+                  "indent_size",
+                  "tab_width",
+                  "end_of_line",
+                  "charset",
+                  "trim_trailing_whitespace",
+                  "insert_final_newline",
+                  "max_line_length",
+                  "spelling_language"
+                ]
+              },
+              "uniqueItems": true
+            }
+          },
+          "additionalProperties": false
+        },
+        "sqlfluff": {
+          "description": "How sqlfluff is generated.",
+          "type": "object",
+          "properties": {
+            "format": {
+              "description": "The native format to write.",
+              "enum": [
+                "ini"
+              ]
+            },
+            "path": {
+              "description": "The native filename to write, among those the tool reads.",
+              "enum": [
+                ".sqlfluff"
+              ]
+            },
+            "skip": {
+              "description": "Standard properties not projected into this tool; \"*\" skips all.",
+              "type": "array",
+              "items": {
+                "enum": [
+                  "*",
+                  "indent_style",
+                  "indent_size",
+                  "tab_width",
+                  "end_of_line",
+                  "charset",
+                  "trim_trailing_whitespace",
+                  "insert_final_newline",
+                  "max_line_length",
+                  "spelling_language"
+                ]
+              },
+              "uniqueItems": true
+            }
+          },
+          "additionalProperties": false
+        },
+        "tombi": {
+          "description": "How tombi is generated.",
+          "type": "object",
+          "properties": {
+            "format": {
+              "description": "The native format to write.",
+              "enum": [
+                "toml"
+              ]
+            },
+            "path": {
+              "description": "The native filename to write, among those the tool reads.",
+              "enum": [
+                "tombi.toml",
+                ".tombi.toml",
+                ".config/tombi.toml"
+              ]
+            },
+            "skip": {
+              "description": "Standard properties not projected into this tool; \"*\" skips all.",
+              "type": "array",
+              "items": {
+                "enum": [
+                  "*",
+                  "indent_style",
+                  "indent_size",
+                  "tab_width",
+                  "end_of_line",
+                  "charset",
+                  "trim_trailing_whitespace",
+                  "insert_final_newline",
+                  "max_line_length",
+                  "spelling_language"
+                ]
+              },
+              "uniqueItems": true
+            }
+          },
+          "additionalProperties": false
+        },
+        "ty": {
+          "description": "How ty is generated.",
+          "type": "object",
+          "properties": {
+            "format": {
+              "description": "The native format to write.",
+              "enum": [
+                "toml"
+              ]
+            },
+            "path": {
+              "description": "The native filename to write, among those the tool reads.",
+              "enum": [
+                "ty.toml"
+              ]
+            },
+            "skip": {
+              "description": "Standard properties not projected into this tool; \"*\" skips all.",
+              "type": "array",
+              "items": {
+                "enum": [
+                  "*",
+                  "indent_style",
+                  "indent_size",
+                  "tab_width",
+                  "end_of_line",
+                  "charset",
+                  "trim_trailing_whitespace",
+                  "insert_final_newline",
+                  "max_line_length",
+                  "spelling_language"
+                ]
+              },
+              "uniqueItems": true
+            }
+          },
+          "additionalProperties": false
+        },
+        "typespec": {
+          "description": "How typespec is generated.",
+          "type": "object",
+          "properties": {
+            "format": {
+              "description": "The native format to write.",
+              "enum": [
+                "yaml"
+              ]
+            },
+            "path": {
+              "description": "The native filename to write, among those the tool reads.",
+              "enum": [
+                "tspconfig.yaml"
+              ]
+            },
+            "skip": {
+              "description": "Standard properties not projected into this tool; \"*\" skips all.",
+              "type": "array",
+              "items": {
+                "enum": [
+                  "*",
+                  "indent_style",
+                  "indent_size",
+                  "tab_width",
+                  "end_of_line",
+                  "charset",
+                  "trim_trailing_whitespace",
+                  "insert_final_newline",
+                  "max_line_length",
+                  "spelling_language"
+                ]
+              },
+              "uniqueItems": true
+            }
+          },
+          "additionalProperties": false
+        },
+        "typos": {
+          "description": "How typos is generated.",
+          "type": "object",
+          "properties": {
+            "format": {
+              "description": "The native format to write.",
+              "enum": [
+                "toml"
+              ]
+            },
+            "path": {
+              "description": "The native filename to write, among those the tool reads.",
+              "enum": [
+                "typos.toml",
+                ".typos.toml",
+                "_typos.toml"
+              ]
+            },
+            "skip": {
+              "description": "Standard properties not projected into this tool; \"*\" skips all.",
+              "type": "array",
+              "items": {
+                "enum": [
+                  "*",
+                  "indent_style",
+                  "indent_size",
+                  "tab_width",
+                  "end_of_line",
+                  "charset",
+                  "trim_trailing_whitespace",
+                  "insert_final_newline",
+                  "max_line_length",
+                  "spelling_language"
+                ]
+              },
+              "uniqueItems": true
+            }
+          },
+          "additionalProperties": false
+        },
+        "yamlfmt": {
+          "description": "How yamlfmt is generated.",
+          "type": "object",
+          "properties": {
+            "format": {
+              "description": "The native format to write.",
+              "enum": [
+                "yaml"
+              ]
+            },
+            "path": {
+              "description": "The native filename to write, among those the tool reads.",
+              "enum": [
+                ".yamlfmt",
+                "yamlfmt.yml",
+                ".yamlfmt.yml",
+                "yamlfmt.yaml",
+                ".yamlfmt.yaml"
+              ]
+            },
+            "skip": {
+              "description": "Standard properties not projected into this tool; \"*\" skips all.",
+              "type": "array",
+              "items": {
+                "enum": [
+                  "*",
+                  "indent_style",
+                  "indent_size",
+                  "tab_width",
+                  "end_of_line",
+                  "charset",
+                  "trim_trailing_whitespace",
+                  "insert_final_newline",
+                  "max_line_length",
+                  "spelling_language"
+                ]
+              },
+              "uniqueItems": true
+            }
+          },
+          "additionalProperties": false
+        },
+        "yamllint": {
+          "description": "How yamllint is generated.",
+          "type": "object",
+          "properties": {
+            "format": {
+              "description": "The native format to write.",
+              "enum": [
+                "yaml"
+              ]
+            },
+            "path": {
+              "description": "The native filename to write, among those the tool reads.",
+              "enum": [
+                ".yamllint",
+                ".yamllint.yaml",
+                ".yamllint.yml"
+              ]
+            },
+            "skip": {
+              "description": "Standard properties not projected into this tool; \"*\" skips all.",
+              "type": "array",
+              "items": {
+                "enum": [
+                  "*",
+                  "indent_style",
+                  "indent_size",
+                  "tab_width",
+                  "end_of_line",
+                  "charset",
+                  "trim_trailing_whitespace",
+                  "insert_final_newline",
+                  "max_line_length",
+                  "spelling_language"
+                ]
+              },
+              "uniqueItems": true
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": {
+    "$ref": "#/definitions/section"
+  },
+  "definitions": {
+    "section": {
+      "description": "An EditorConfig section. The key is a glob; later sections take precedence.",
+      "type": "object",
+      "properties": {
+        "indent_style": {
+          "description": "Indent with spaces or tabs.",
+          "enum": [
+            "space",
+            "tab",
+            "unset"
+          ]
+        },
+        "indent_size": {
+          "description": "Columns per indentation level, or \"tab\" to use tab_width.",
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 1
+            },
+            {
+              "enum": [
+                "tab",
+                "unset"
+              ]
+            }
+          ]
+        },
+        "tab_width": {
+          "description": "Columns a tab character occupies. Defaults to indent_size.",
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 1
+            },
+            {
+              "const": "unset"
+            }
+          ]
+        },
+        "end_of_line": {
+          "description": "Line ending.",
+          "enum": [
+            "lf",
+            "crlf",
+            "cr",
+            "unset"
+          ]
+        },
+        "charset": {
+          "description": "Character set.",
+          "enum": [
+            "latin1",
+            "utf-8",
+            "utf-8-bom",
+            "utf-16be",
+            "utf-16le",
+            "unset"
+          ]
+        },
+        "trim_trailing_whitespace": {
+          "description": "Remove whitespace before line breaks.",
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "const": "unset"
+            }
+          ]
+        },
+        "insert_final_newline": {
+          "description": "End files with a line break.",
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "const": "unset"
+            }
+          ]
+        },
+        "max_line_length": {
+          "description": "Maximum line length, or \"off\".",
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 1
+            },
+            {
+              "enum": [
+                "off",
+                "unset"
+              ]
+            }
+          ]
+        },
+        "spelling_language": {
+          "description": "Natural language for spell checking, such as \"en-US\".",
+          "type": "string"
+        },
+        "actionlint": {
+          "description": "Native actionlint options for the files this section matches.",
+          "type": "object"
+        },
+        "buf": {
+          "description": "Native buf options for the files this section matches.",
+          "type": "object"
+        },
+        "cargo-deny": {
+          "description": "Native cargo-deny options for the files this section matches.",
+          "type": "object"
+        },
+        "csharpier": {
+          "description": "Native csharpier options for the files this section matches.",
+          "type": "object"
+        },
+        "editorconfig-checker": {
+          "description": "Native editorconfig-checker options for the files this section matches.",
+          "type": "object"
+        },
+        "gitleaks": {
+          "description": "Native gitleaks options for the files this section matches.",
+          "type": "object"
+        },
+        "knip": {
+          "description": "Native knip options for the files this section matches.",
+          "type": "object"
+        },
+        "lychee": {
+          "description": "Native lychee options for the files this section matches.",
+          "type": "object"
+        },
+        "oxfmt": {
+          "description": "Native oxfmt options for the files this section matches.",
+          "type": "object"
+        },
+        "oxlint": {
+          "description": "Native oxlint options for the files this section matches.",
+          "type": "object"
+        },
+        "prettier": {
+          "description": "Native prettier options for the files this section matches.",
+          "type": "object"
+        },
+        "ruff": {
+          "description": "Native ruff options for the files this section matches.",
+          "type": "object"
+        },
+        "rumdl": {
+          "description": "Native rumdl options for the files this section matches.",
+          "type": "object"
+        },
+        "rustfmt": {
+          "description": "Native rustfmt options for the files this section matches.",
+          "type": "object"
+        },
+        "ryl": {
+          "description": "Native ryl options for the files this section matches.",
+          "type": "object"
+        },
+        "sqlfluff": {
+          "description": "Native sqlfluff options for the files this section matches.",
+          "type": "object"
+        },
+        "tombi": {
+          "description": "Native tombi options for the files this section matches.",
+          "type": "object"
+        },
+        "ty": {
+          "description": "Native ty options for the files this section matches.",
+          "type": "object"
+        },
+        "typespec": {
+          "description": "Native typespec options for the files this section matches.",
+          "type": "object"
+        },
+        "typos": {
+          "description": "Native typos options for the files this section matches.",
+          "type": "object"
+        },
+        "yamlfmt": {
+          "description": "Native yamlfmt options for the files this section matches.",
+          "type": "object"
+        },
+        "yamllint": {
+          "description": "Native yamllint options for the files this section matches.",
+          "type": "object"
+        }
+      },
+      "additionalProperties": {
+        "$ref": "#/definitions/property"
+      }
+    },
+    "property": {
+      "description": "An EditorConfig property that other tools read, written to .editorconfig as is.",
+      "anyOf": [
+        {
+          "type": [
+            "string",
+            "integer",
+            "number",
+            "boolean"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/property"
+          }
+        }
+      ]
+    },
+    "file": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "description": "Path relative to this directory.",
+          "type": "string"
+        },
+        "format": {
+          "enum": [
+            "json",
+            "yaml",
+            "toml",
+            "ini",
+            "text",
+            "lines"
+          ]
+        },
+        "config": {
+          "description": "The file's content: a table, a string for text, or an array of strings for lines."
+        }
+      },
+      "required": [
+        "path"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

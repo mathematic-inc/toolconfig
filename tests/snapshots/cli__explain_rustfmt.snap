@@ -1,0 +1,10 @@
+---
+source: tests/cli.rs
+expression: "project.ok(&[\"explain\", \"rustfmt\"])"
+---
+rustfmt -> rustfmt.toml (from .toolconfig.toml)
+  hard_tabs      false   .toolconfig.toml:11 ["*"] indent_style = space
+  tab_spaces     4       .toolconfig.toml:21 ["*.rs"] indent_size = 4
+  max_width      100     .toolconfig.toml:13 ["*"] max_line_length = 100
+  newline_style  "Unix"  .toolconfig.toml:8 ["*"] end_of_line = lf
+  edition        "2024"  .toolconfig.toml:22 ["*.rs"] rustfmt.edition

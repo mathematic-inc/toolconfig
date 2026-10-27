@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "outputs": {
+    ".editorconfig": {
+      "hash": "450106bca2c2c556926e33228f540f57141d0ab21f3339c13a35033152ae2981"
+    },
+    ".prettierrc.json": {
+      "hash": "b0ea2bcbe04c85439e33f9a6892abeac6b402d9f88908e6e3f4537d255213c3d"
+    },
+    "ruff.toml": {
+      "hash": "e83ec0f7580fbafb99e1c3a4f4b91ca80b4ce993704733edcb152c71d8f06d35"
+    },
+    "rustfmt.toml": {
+      "hash": "7f51d63be8bf7c6981cb1d7ed3d7ff05eba9ec565f5197a44bacbcddde371dbe"
+    }
+  }
+}

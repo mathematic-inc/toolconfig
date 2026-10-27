@@ -1,0 +1,16 @@
+---
+source: tests/cli.rs
+expression: "project.read(\".prettierrc.json\")"
+---
+{
+  "tabWidth": 2,
+  "printWidth": 100,
+  "overrides": [
+    {
+      "files": ["**/*.md"],
+      "options": {
+        "printWidth": 80
+      }
+    }
+  ]
+}
