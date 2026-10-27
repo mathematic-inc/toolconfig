@@ -25,24 +25,36 @@ impl Inputs {
     }
 
     pub(crate) fn changed(&self) -> bool {
-        self.files
+        let file = self
+            .files
             .iter()
-            .any(|(path, old)| match (old, fingerprint(path)) {
+            .find(|(path, old)| match (old, fingerprint(path)) {
                 (Some(old), Ok(current)) => old != &current,
                 (None, Err(_)) => path.try_exists().unwrap_or(true),
                 _ => true,
-            })
-            || self.globs.iter().any(|((base, pattern), expected)| {
-                NativeCapabilities::new()
-                    .glob(base, pattern)
-                    .map_or(true, |paths| {
-                        let paths = paths
-                            .into_iter()
-                            .filter(|path| !self.ignores(path))
-                            .collect::<Vec<_>>();
-                        &paths != expected
-                    })
-            })
+            });
+        if let Some((path, _)) = file {
+            trace(format_args!("input changed: {}", path.display()));
+            return true;
+        }
+        self.globs.iter().any(|((base, pattern), expected)| {
+            NativeCapabilities::new()
+                .glob(base, pattern)
+                .map_or(true, |paths| {
+                    let paths = paths
+                        .into_iter()
+                        .filter(|path| !self.ignores(path))
+                        .collect::<Vec<_>>();
+                    let changed = &paths != expected;
+                    if changed {
+                        trace(format_args!(
+                            "glob changed: {pattern} in {}",
+                            base.display()
+                        ));
+                    }
+                    changed
+                })
+        })
     }
 
     pub(crate) fn contains(&self, path: &Path) -> bool {
@@ -78,6 +90,13 @@ impl Inputs {
         self.directories.extend(other.directories);
         self.globs.extend(other.globs);
         self.excluded.extend(other.excluded);
+    }
+}
+
+/// With TOOLCONFIG_WATCH_TRACE set, reports why watch mode regenerates.
+pub(crate) fn trace(message: std::fmt::Arguments<'_>) {
+    if std::env::var_os("TOOLCONFIG_WATCH_TRACE").is_some() {
+        eprintln!("toolconfig: trace: {message}");
     }
 }
 

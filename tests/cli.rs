@@ -536,10 +536,12 @@ fn watch_ignores_package_cache_activity() {
     use std::time::Duration;
 
     let project = Project::new();
+    // A glob import watches the whole project directory, which contains the cache.
+    project.write("fragments/width.pkl", "width = 100\n");
     project.write(
         ".toolconfig.pkl",
         &format!(
-            "amends \"{}#/ToolConfig.pkl\"\n\nroot = true\n\ntoolconfig {{\n  tools = List(\"rustfmt\")\n}}\n",
+            "amends \"{}#/ToolConfig.pkl\"\n\nimport* \"fragments/*.pkl\" as fragments\n\nroot = true\n\ntoolconfig {{\n  tools = List(\"rustfmt\")\n}}\n\nsections {{\n  [\"*.rs\"] {{\n    max_line_length = fragments[\"fragments/width.pkl\"].width\n  }}\n}}\n",
             format_args!(
                 "package://github.com/mathematic-inc/toolconfig/releases/download/v{0}/toolconfig@{0}",
                 env!("CARGO_PKG_VERSION")
@@ -551,6 +553,7 @@ fn watch_ignores_package_cache_activity() {
         .current_dir(project.path(""))
         .env_remove("TOOLCONFIG_ROOT")
         .env("TOOLCONFIG_PKL_CACHE_DIR", project.path(".pkl-cache"))
+        .env("TOOLCONFIG_WATCH_TRACE", "1")
         .stderr(Stdio::piped())
         .spawn()
         .unwrap();
@@ -568,7 +571,7 @@ fn watch_ignores_package_cache_activity() {
             .recv_timeout(timeout)
             .into_iter()
             .chain(std::iter::from_fn(|| lines.recv_timeout(timeout).ok()))
-            .find(|line: &String| line.contains("generated"))
+            .find(|line: &String| line.contains("generated") || line.contains("trace:"))
     };
     let first = generated(Duration::from_secs(60));
     assert!(first.is_some(), "watch mode never generated");
@@ -580,7 +583,18 @@ fn watch_ignores_package_cache_activity() {
         .path();
     std::fs::write(cache.join("unrelated"), "cache activity").unwrap();
     let again = generated(Duration::from_millis(1500));
+    // A real edit to an imported module still regenerates.
+    project.write("fragments/width.pkl", "width = 90\n");
+    let edited = lines
+        .recv_timeout(Duration::from_secs(60))
+        .into_iter()
+        .chain(std::iter::from_fn(|| {
+            lines.recv_timeout(Duration::from_secs(60)).ok()
+        }))
+        .find(|line| line.contains("generated"));
     let _ = child.kill();
     let _ = child.wait();
     assert_eq!(again, None, "cache activity triggered regeneration");
+    assert!(edited.is_some(), "an edited import did not regenerate");
+    assert!(project.read("rustfmt.toml").contains("max_width = 90"));
 }

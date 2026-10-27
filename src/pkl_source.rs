@@ -33,23 +33,30 @@ pub(crate) fn evaluate(path: &Path, root: &Path) -> (Result<Source>, Inputs) {
             .map(PathBuf::from)
             .or_else(|| dirs::cache_dir().map(|path| path.join("toolconfig/pkl")))
             .context("cannot locate a package cache; set TOOLCONFIG_PKL_CACHE_DIR")?;
+        let cache_root = absolute(root, &cache)?;
         // A development rebuild must not reuse different package bytes under the same version.
-        let cache = absolute(root, &cache)?.join(digest(EMBEDDED_PACKAGE));
+        let cache = cache_root.join(digest(EMBEDDED_PACKAGE));
         std::fs::create_dir_all(&cache).context("cannot create the Pkl package cache")?;
         let cache = cache
+            .canonicalize()
+            .context("cannot resolve the package cache")?;
+        // Windows reports activity inside the cache as a change to the cache directory itself,
+        // so the whole configured cache is excluded, not only this package's subdirectory.
+        let cache_root = cache_root
             .canonicalize()
             .context("cannot resolve the package cache")?;
         recorded
             .lock()
             .map_err(|_| anyhow::anyhow!("input tracking failed"))?
             .excluded
-            .insert(cache.clone());
+            .insert(cache_root.clone());
         let capabilities = Tracking {
             inner: NativeCapabilities::new(),
             recorded: Arc::clone(&recorded),
             root: root.to_path_buf(),
             source_dir: dir.to_path_buf(),
             cache: cache.clone(),
+            cache_root,
             temporary: Vec::new(),
         };
         let mut evaluator = Evaluator::with_capabilities(capabilities);
@@ -232,12 +239,13 @@ struct Tracking {
     root: PathBuf,
     source_dir: PathBuf,
     cache: PathBuf,
+    cache_root: PathBuf,
     temporary: Vec<tempfile::TempDir>,
 }
 
 impl Tracking {
     fn record(&self, path: &Path, bytes: Option<&[u8]>) -> pklr::Result<()> {
-        if within(path, &self.cache) {
+        if within(path, &self.cache_root) {
             return Ok(());
         }
         let mut inputs = self
@@ -318,7 +326,7 @@ impl EvalCapabilities for Tracking {
             .inner
             .glob(base, pattern)?
             .into_iter()
-            .filter(|path| !within(path, &self.cache))
+            .filter(|path| !within(path, &self.cache_root))
             .collect::<Vec<_>>();
         let mut recorded = self
             .recorded

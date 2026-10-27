@@ -198,10 +198,25 @@ fn update_watches(
 }
 
 fn relevant(event: &notify::Event, root: &Path, inputs: &Inputs, outputs: &[PathBuf]) -> bool {
-    if matches!(event.kind, notify::EventKind::Access(_)) {
+    // Access and metadata changes, such as macOS extended attributes set when a file is read,
+    // cannot change what a source evaluates to.
+    if matches!(
+        event.kind,
+        notify::EventKind::Access(_)
+            | notify::EventKind::Modify(notify::event::ModifyKind::Metadata(_))
+    ) {
         return false;
     }
-    event.paths.iter().any(|path| {
+    // Removing or renaming a directory affects the inputs inside it; other directory events do not.
+    let structural = matches!(
+        event.kind,
+        notify::EventKind::Remove(_)
+            | notify::EventKind::Modify(notify::event::ModifyKind::Name(_))
+            | notify::EventKind::Any
+            | notify::EventKind::Other
+    );
+    let mut changed = None;
+    let relevant = event.paths.iter().find(|path| {
         let name = path
             .file_name()
             .map(|name| name.to_string_lossy().into_owned())
@@ -214,14 +229,27 @@ fn relevant(event: &notify::Event, root: &Path, inputs: &Inputs, outputs: &[Path
         {
             return false;
         }
-        SOURCE_NAMES.contains(&name.as_str())
+        let candidate = SOURCE_NAMES.contains(&name.as_str())
             || name == ".editorconfig"
-            || name == "package.json"
+            || name == "package.json";
+        // A new source or hand-written .editorconfig can change the plan without being an input.
+        if candidate && !inputs.contains(path) {
+            return true;
+        }
+        let read = candidate
             || inputs
                 .paths()
-                .any(|input| input == path || input.starts_with(path))
-            || inputs
-                .directories()
-                .any(|directory| path.starts_with(directory))
-    })
+                .any(|input| input == *path || (structural && input.starts_with(path)))
+            || inputs.directories().any(|directory| {
+                // A directory's own event, such as FSEvents replaying its creation, adds no file.
+                path.starts_with(directory) && **path != *directory
+            });
+        // Watchers replay recent history and report attribute changes, so something already read
+        // only counts when an input's content or a glob's matches actually changed.
+        read && *changed.get_or_insert_with(|| inputs.changed())
+    });
+    if let Some(path) = relevant {
+        crate::inputs::trace(format_args!("{:?} {}", event.kind, path.display()));
+    }
+    relevant.is_some()
 }
