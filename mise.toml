@@ -3,6 +3,7 @@ all_compile = false
 
 [tools]
 "aqua:EmbarkStudios/cargo-deny" = "0.20.2"
+cargo-binstall = "1.26.1"
 node = "26.12.1"
 "npm:prettier" = "3.9.10"
 oxfmt = "0.74.0"
