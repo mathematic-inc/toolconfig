@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026.10.1 (2026-10-27)
+
+### Bug fixes
+
+- Watch mode no longer regenerates when a project-local Pkl package cache changes. On Windows,
+  activity inside the cache is reported as a change to the cache directory itself.
+- Watch mode ignores metadata-only changes and events replayed from before it started, and
+  regenerates for a file it already read only when the file's content changes.
+- `TOOLCONFIG_WATCH_TRACE` prints what triggered a regeneration.
+
 ## 2026.10.0 (2026-10-27)
 
 ### Features
