@@ -1,5 +1,18 @@
 # Changelog
 
+## 2026.11.0 (2026-11-02)
+
+### Features
+
+- golangci-lint (`.golangci.yml`, v2), hadolint (`.hadolint.yaml`), tflint (`.tflint.hcl`, or
+  `.tflint.json`) and shellcheck (`.shellcheckrc`) join the catalog.
+- golangci-lint takes the width as `lll`'s `line-length`, only where its own options turn `lll`
+  on.
+- tflint's file is written as HCL, laid out as `hclfmt` lays it out. An object tflint's schema
+  doesn't place is refused, naming `tflint.format = "json"` as the fix.
+- In a TOML section, `shellcheck.*` keys are now shellcheck's options. Quote the key to write it
+  to `.editorconfig` instead.
+
 ## 2026.10.2 (2026-10-27)
 
 ### Features
