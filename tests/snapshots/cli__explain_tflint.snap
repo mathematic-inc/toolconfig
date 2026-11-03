@@ -1,0 +1,14 @@
+---
+source: tests/cli.rs
+expression: "project.ok(&[\"explain\", \"tflint\"])"
+---
+tflint -> .tflint.hcl (from .toolconfig.toml)
+  config.call_module_type                               "local"                   .toolconfig.toml:7 ["*.tf"] tflint.config.call_module_type
+  config.format                                         "compact"                 .toolconfig.toml:8 ["*.tf"] tflint.config.format
+  config.ignore_module."terraform-aws-modules/vpc/aws"  true                      .toolconfig.toml:9 ["*.tf"] tflint.config.ignore_module."terraform-aws-modules/vpc/aws"
+  plugin.aws.enabled                                    true                      .toolconfig.toml:12 ["*.tf"] tflint.plugin.aws.enabled
+  plugin.aws.version                                    "0.50.0"                  .toolconfig.toml:13 ["*.tf"] tflint.plugin.aws.version
+  plugin.aws.source                                     "github.com/terraform-linters/tflint-ruleset-aws"  .toolconfig.toml:14 ["*.tf"] tflint.plugin.aws.source
+  rule.terraform_naming_convention.enabled              true                      .toolconfig.toml:17 ["*.tf"] tflint.rule.terraform_naming_convention.enabled
+  rule.terraform_naming_convention.variable.format      "snake_case"              .toolconfig.toml:18 ["*.tf"] tflint.rule.terraform_naming_convention.variable.format
+  rule.aws_instance_invalid_type.enabled                false                     .toolconfig.toml:21 ["*.tf"] tflint.rule.aws_instance_invalid_type.enabled

@@ -203,6 +203,7 @@ the same properties leave them unchanged.
 | Tool | Properties it receives | Native file |
 | --- | --- | --- |
 | csharpier | indent, width, line ending | `.csharpierrc.yaml` |
+| golangci-lint | width, as `lll`'s line length where the source turns `lll` on | `.golangci.yml` |
 | oxfmt | indent, width, line ending, final newline | `.oxfmtrc.json` |
 | prettier | indent, width, line ending | `.prettierrc.json` |
 | ruff | indent, width, line ending | `ruff.toml` |
@@ -213,9 +214,18 @@ the same properties leave them unchanged.
 | tombi | indent, width, line ending | `tombi.toml` |
 | typos | spelling language | `typos.toml` |
 | yamlfmt | indent, width, line ending | `.yamlfmt` |
-| actionlint, buf, cargo-deny, editorconfig-checker, gitleaks, knip, lychee, oxlint, ty, typespec | native options only | their usual file |
+| actionlint, buf, cargo-deny, editorconfig-checker, gitleaks, hadolint, knip, lychee, oxlint, shellcheck, tflint, ty, typespec | native options only | their usual file |
 
 shfmt and ktlint read `.editorconfig` themselves; write their keys in sections.
+
+golangci-lint's `lll` is on when `linters.enable` names it, or `linters.default` is `all` or
+`fast`, and `linters.disable` does not name it. shellcheck's `.shellcheckrc` applies to every
+script beneath it, so its options go in `["*"]`; an array repeats its key, as in
+`source-path = ["SCRIPTDIR", "lib"]`. tflint's `.tflint.hcl` is written as HCL reads its JSON
+form: `["*.tf".tflint.plugin.aws]` becomes `plugin "aws" { ... }`. ToolConfig knows which objects
+are blocks in tflint's own schema and its bundled terraform ruleset; for a plugin's nested block,
+such as `assume_role`, set `tflint.format = "json"` to write `.tflint.json`, which each plugin
+reads by its own schema.
 
 ## Commands
 
@@ -269,10 +279,10 @@ cargo test --locked
 python tests/native/run.py --toolconfig target/debug/toolconfig
 ```
 
-The native suite runs rustfmt, ruff, prettier, oxfmt, tombi, yamllint and sqlfluff against
-generated configuration; `mise install` provides them. After changing the catalog, refresh the
-schema with `cargo run -- schema > schema/toolconfig.schema.json`. Releases are described in
-[docs/releasing.md](docs/releasing.md).
+The native suite runs rustfmt, ruff, prettier, oxfmt, tombi, yamllint, sqlfluff, golangci-lint,
+tflint and shellcheck against generated configuration; `mise install` provides them. After
+changing the catalog, refresh the schema with `cargo run -- schema > schema/toolconfig.schema.json`.
+Releases are described in [docs/releasing.md](docs/releasing.md).
 
 ## License
 

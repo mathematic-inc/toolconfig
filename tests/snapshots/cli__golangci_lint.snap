@@ -1,0 +1,20 @@
+---
+source: tests/cli.rs
+expression: "project.read(\".golangci.yml\")"
+---
+version: "2"
+linters:
+  settings:
+    lll:
+      line-length: 100
+  enable:
+    - lll
+    - misspell
+formatters:
+  enable:
+    - gofumpt
+    - goimports
+  settings:
+    goimports:
+      local-prefixes:
+        - example.com/acme

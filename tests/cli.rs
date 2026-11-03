@@ -627,3 +627,205 @@ fn check_allows_missing_ignored_files() {
     let stdout = String::from_utf8(project.run(&["check"]).stdout).unwrap();
     assert_eq!(stdout, "stale\trustfmt.toml\n");
 }
+
+/// Checks that `check` reports `file` once it is edited, and once `changed` replaces the source.
+fn assert_check_catches_drift(project: &Project, file: &str, changed: &str) {
+    let generated = project.read(file);
+    project.write(file, &format!("{generated}# edited\n"));
+    let stdout = String::from_utf8(project.run(&["check"]).stdout).unwrap();
+    assert_eq!(stdout, format!("modified\t{file}\n"));
+    project.write(file, &generated);
+    let source = project.read(".toolconfig.toml");
+    project.write(".toolconfig.toml", changed);
+    let stdout = String::from_utf8(project.run(&["check"]).stdout).unwrap();
+    assert_eq!(stdout, format!("stale\t{file}\n"));
+    project.write(".toolconfig.toml", &source);
+    assert!(project.ok(&["check"]).starts_with("Up to date"));
+}
+
+const GOLANGCI_LINT: &str = r#"root = true
+
+[toolconfig]
+tools = ["golangci-lint"]
+
+["*"]
+max_line_length = 100
+
+["*.go".golangci-lint.linters]
+enable = ["lll", "misspell"]
+
+["*.go".golangci-lint.formatters]
+enable = ["gofumpt", "goimports"]
+settings.goimports.local-prefixes = ["example.com/acme"]
+"#;
+
+#[test]
+fn golangci_lint_takes_the_width_where_lll_is_on() {
+    let project = Project::new();
+    project.write(".toolconfig.toml", GOLANGCI_LINT);
+    project.ok(&["generate"]);
+    insta::assert_snapshot!("golangci_lint", project.read(".golangci.yml"));
+    insta::assert_snapshot!(
+        "explain_golangci_lint",
+        project.ok(&["explain", "golangci-lint"])
+    );
+    assert_check_catches_drift(
+        &project,
+        ".golangci.yml",
+        &GOLANGCI_LINT.replace("misspell", "revive"),
+    );
+    // lll counts as on in the default sets that include it, and off once disabled.
+    for (linters, on) in [
+        ("enable = [\"misspell\"]", false),
+        ("default = \"fast\"", true),
+        ("default = \"all\"\ndisable = [\"lll\"]", false),
+    ] {
+        project.write(
+            ".toolconfig.toml",
+            &GOLANGCI_LINT.replace("enable = [\"lll\", \"misspell\"]", linters),
+        );
+        project.ok(&["generate"]);
+        let generated = project.read(".golangci.yml");
+        assert_eq!(generated.contains("line-length: 100"), on, "{generated}");
+    }
+    project.write(
+        ".toolconfig.toml",
+        &GOLANGCI_LINT.replace(
+            "\"misspell\"]",
+            "\"misspell\"]\nsettings.lll.line-length = 80",
+        ),
+    );
+    let error = project.fail(&["validate"]);
+    assert!(
+        error
+            .contains("golangci-lint.linters.settings.lll.line-length is set twice for *.go files"),
+        "{error}"
+    );
+}
+
+const HADOLINT: &str = r#"root = true
+
+[toolconfig]
+tools = ["hadolint"]
+
+["*".hadolint]
+ignored = ["DL3008"]
+trustedRegistries = ["docker.io", "*.gcr.io"]
+failure-threshold = "warning"
+strict-labels = true
+
+["*".hadolint.override]
+error = ["DL3001"]
+"#;
+
+#[test]
+fn hadolint_receives_native_options() {
+    let project = Project::new();
+    project.write(".toolconfig.toml", HADOLINT);
+    project.ok(&["generate"]);
+    insta::assert_snapshot!("hadolint", project.read(".hadolint.yaml"));
+    insta::assert_snapshot!("explain_hadolint", project.ok(&["explain", "hadolint"]));
+    assert_check_catches_drift(
+        &project,
+        ".hadolint.yaml",
+        &HADOLINT.replace("DL3008", "DL3009"),
+    );
+    project.write(".hadolint.yml", "ignored: []\n");
+    let error = project.fail(&["generate"]);
+    assert!(error.contains(".hadolint.yml would conflict"), "{error}");
+}
+
+const TFLINT: &str = r#"root = true
+
+[toolconfig]
+tools = ["tflint"]
+
+["*.tf".tflint.config]
+call_module_type = "local"
+format = "compact"
+ignore_module = { "terraform-aws-modules/vpc/aws" = true }
+
+["*.tf".tflint.plugin.aws]
+enabled = true
+version = "0.50.0"
+source = "github.com/terraform-linters/tflint-ruleset-aws"
+
+["*.tf".tflint.rule.terraform_naming_convention]
+enabled = true
+variable.format = "snake_case"
+
+["*.tf".tflint.rule.aws_instance_invalid_type]
+enabled = false
+"#;
+
+#[test]
+fn tflint_is_written_in_hcl() {
+    let project = Project::new();
+    project.write(".toolconfig.toml", TFLINT);
+    project.ok(&["generate"]);
+    insta::assert_snapshot!("tflint", project.read(".tflint.hcl"));
+    insta::assert_snapshot!("explain_tflint", project.ok(&["explain", "tflint"]));
+    assert_check_catches_drift(
+        &project,
+        ".tflint.hcl",
+        &TFLINT.replace("enabled = false", "enabled = true"),
+    );
+    // An object the schema does not place is an error; JSON leaves it to tflint.
+    let assume_role = format!(
+        "{TFLINT}\n[\"*.tf\".tflint.plugin.aws.assume_role]\nrole_arn = \"arn:aws:iam::123456789012:role/lint\"\n"
+    );
+    project.write(".toolconfig.toml", &assume_role);
+    let error = project.fail(&["validate"]);
+    assert!(
+        error.contains("cannot tell whether plugin.aws.assume_role is a block or an attribute"),
+        "{error}"
+    );
+    assert!(error.contains("format = \"json\""), "{error}");
+    project.write(
+        ".toolconfig.toml",
+        &assume_role.replace(
+            "tools = [\"tflint\"]",
+            "tools = [\"tflint\"]\ntflint.format = \"json\"",
+        ),
+    );
+    project.ok(&["generate"]);
+    assert!(!project.exists(".tflint.hcl"));
+    assert!(project.read(".tflint.json").contains("\"assume_role\": {"));
+}
+
+const SHELLCHECK: &str = r#"root = true
+
+[toolconfig]
+tools = ["shellcheck"]
+
+["*".shellcheck]
+shell = "bash"
+external-sources = true
+enable = ["quote-safe-variables", "require-variable-braces"]
+disable = "SC2236"
+source-path = ["SCRIPTDIR", "lib dir"]
+"#;
+
+#[test]
+fn shellcheck_writes_its_rc_file() {
+    let project = Project::new();
+    project.write(".toolconfig.toml", SHELLCHECK);
+    project.ok(&["generate"]);
+    insta::assert_snapshot!("shellcheck", project.read(".shellcheckrc"));
+    insta::assert_snapshot!("explain_shellcheck", project.ok(&["explain", "shellcheck"]));
+    assert_check_catches_drift(
+        &project,
+        ".shellcheckrc",
+        &SHELLCHECK.replace("SC2236", "SC2034"),
+    );
+    // The rc file covers every script beneath it, so options for some scripts cannot go there.
+    project.write(
+        ".toolconfig.toml",
+        &format!("{SHELLCHECK}\n[\"*.bash\".shellcheck]\nshell = \"bash\"\ndisable = \"SC2034\"\n"),
+    );
+    let error = project.fail(&["validate"]);
+    assert!(
+        error.contains("cannot follow section \"*.bash\""),
+        "{error}"
+    );
+}

@@ -1,0 +1,10 @@
+---
+source: tests/cli.rs
+expression: "project.ok(&[\"explain\", \"hadolint\"])"
+---
+hadolint -> .hadolint.yaml (from .toolconfig.toml)
+  ignored            ["DL3008"]                .toolconfig.toml:7 ["*"] hadolint.ignored
+  trustedRegistries  ["docker.io","*.gcr.io"]  .toolconfig.toml:8 ["*"] hadolint.trustedRegistries
+  failure-threshold  "warning"                 .toolconfig.toml:9 ["*"] hadolint.failure-threshold
+  strict-labels      true                      .toolconfig.toml:10 ["*"] hadolint.strict-labels
+  override.error     ["DL3001"]                .toolconfig.toml:13 ["*"] hadolint.override.error

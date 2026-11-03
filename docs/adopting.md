@@ -13,9 +13,10 @@ can also follow it by hand. Ask your assistant:
 1. Copy the current `.editorconfig` files and every native configuration file aside, outside
    the repository, so you can compare later.
 2. List which tools have native files. The supported tools are actionlint, buf, cargo-deny,
-   csharpier, editorconfig-checker, gitleaks, knip, lychee, oxfmt, oxlint, prettier, ruff,
-   rumdl, rustfmt, ryl, sqlfluff, tombi, ty, typespec, typos, yamlfmt and yamllint. Leave
-   files for other tools as they are; ToolConfig does not touch them.
+   csharpier, editorconfig-checker, gitleaks, golangci-lint, hadolint, knip, lychee, oxfmt,
+   oxlint, prettier, ruff, rumdl, rustfmt, ryl, shellcheck, sqlfluff, tflint, tombi, ty,
+   typespec, typos, yamlfmt and yamllint. Leave files for other tools as they are; ToolConfig
+   does not touch them.
 
 ## 2. Convert `.editorconfig`
 
@@ -40,13 +41,15 @@ For each native file:
    `typos.path = "_typos.toml"`.
 3. Move the options into a table under the `["*"]` section, keeping their structure:
    `["*".ruff]`, `["*".ruff.lint]`, `[["*".gitleaks.allowlists]]`. Options that only apply to
-   some file types can go under that type's section, such as `["*.md".prettier]`.
+   some file types can go under that type's section, such as `["*.md".prettier]`. A
+   `.tflint.hcl` moves in its JSON form: `rule "x" { enabled = false }` becomes
+   `["*.tf".tflint.rule.x]` with `enabled = false`.
 4. Formatting options become standard properties instead, in a section for the files the tool
    formats. Each pair below is one value:
 
    | Tool option | Standard property |
    | --- | --- |
-   | prettier/oxfmt/csharpier `printWidth`, rustfmt `max_width`, ruff `line-length`, sqlfluff `max_line_length`, tombi `line-width` | `max_line_length` |
+   | prettier/oxfmt/csharpier `printWidth`, rustfmt `max_width`, ruff `line-length`, sqlfluff `max_line_length`, tombi `line-width`, golangci-lint `linters.settings.lll.line-length` where `lll` is on | `max_line_length` |
    | prettier/oxfmt/csharpier `tabWidth`, rustfmt `tab_spaces`, ruff `indent-width`, sqlfluff `tab_space_size` | `indent_size` |
    | prettier/oxfmt/csharpier `useTabs`, rustfmt `hard_tabs`, ruff `format.indent-style` | `indent_style` |
    | prettier/oxfmt/csharpier `endOfLine`, rustfmt `newline_style`, ruff `format.line-ending` | `end_of_line` |

@@ -38,6 +38,11 @@ impl Value {
             .map(|(_, value)| value)
     }
 
+    /// The value at `path`, through nested objects.
+    pub(crate) fn get_path(&self, path: &[String]) -> Option<&Value> {
+        path.iter().try_fold(self, |value, key| value.get(key))
+    }
+
     pub(crate) fn as_str(&self) -> Option<&str> {
         match self {
             Self::String(value) => Some(value),

@@ -227,9 +227,15 @@ impl Context<'_> {
             }
         }
         let normalized = normalize(&resolved);
+        let options = self.options(&resolved);
         let mut projected = Leaves::new();
         for mapping in &self.builtin.projection {
-            if self.skipped(&mapping.property) {
+            if self.skipped(&mapping.property)
+                || mapping
+                    .when
+                    .as_ref()
+                    .is_some_and(|when| !when.holds(&options))
+            {
                 continue;
             }
             let Some((value, description, provenance)) = normalized.get(mapping.property.as_str())
@@ -329,6 +335,21 @@ impl Context<'_> {
             leaves.push((path, leaf));
         }
         Ok(leaves)
+    }
+
+    /// The tool's own options for one file: its defaults, then its tables.
+    fn options(&self, resolved: &Resolved) -> Value {
+        let mut options = self
+            .builtin
+            .config
+            .as_ref()
+            .map_or_else(Value::object, Value::from_json);
+        if let Some(resolution) = resolved.tools.get(&self.builtin.id)
+            && let Some(value) = &resolution.value
+        {
+            options.merge(value);
+        }
+        options
     }
 
     fn native_dir_source(&self) -> String {

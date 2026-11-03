@@ -1,0 +1,10 @@
+---
+source: tests/cli.rs
+expression: "project.ok(&[\"explain\", \"golangci-lint\"])"
+---
+golangci-lint -> .golangci.yml (from .toolconfig.toml)
+  version                                       "2"                      golangci-lint default
+  linters.settings.lll.line-length              100                      .toolconfig.toml:7 ["*"] max_line_length = 100
+  linters.enable                                ["lll","misspell"]       .toolconfig.toml:10 ["*.go"] golangci-lint.linters.enable
+  formatters.enable                             ["gofumpt","goimports"]  .toolconfig.toml:13 ["*.go"] golangci-lint.formatters.enable
+  formatters.settings.goimports.local-prefixes  ["example.com/acme"]     .toolconfig.toml:14 ["*.go"] golangci-lint.formatters.settings.goimports.local-prefixes

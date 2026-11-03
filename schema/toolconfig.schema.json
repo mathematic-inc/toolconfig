@@ -24,6 +24,8 @@
               "csharpier",
               "editorconfig-checker",
               "gitleaks",
+              "golangci-lint",
+              "hadolint",
               "knip",
               "lychee",
               "oxfmt",
@@ -33,7 +35,9 @@
               "rumdl",
               "rustfmt",
               "ryl",
+              "shellcheck",
               "sqlfluff",
+              "tflint",
               "tombi",
               "ty",
               "typespec",
@@ -260,6 +264,88 @@
               "description": "The native filename to write, among those the tool reads.",
               "enum": [
                 ".gitleaks.toml"
+              ]
+            },
+            "skip": {
+              "description": "Standard properties not projected into this tool; \"*\" skips all.",
+              "type": "array",
+              "items": {
+                "enum": [
+                  "*",
+                  "indent_style",
+                  "indent_size",
+                  "tab_width",
+                  "end_of_line",
+                  "charset",
+                  "trim_trailing_whitespace",
+                  "insert_final_newline",
+                  "max_line_length",
+                  "spelling_language"
+                ]
+              },
+              "uniqueItems": true
+            }
+          },
+          "additionalProperties": false
+        },
+        "golangci-lint": {
+          "description": "How golangci-lint is generated.",
+          "type": "object",
+          "properties": {
+            "format": {
+              "description": "The native format to write.",
+              "enum": [
+                "json",
+                "toml",
+                "yaml"
+              ]
+            },
+            "path": {
+              "description": "The native filename to write, among those the tool reads.",
+              "enum": [
+                ".golangci.yml",
+                ".golangci.yaml",
+                ".golangci.toml",
+                ".golangci.json"
+              ]
+            },
+            "skip": {
+              "description": "Standard properties not projected into this tool; \"*\" skips all.",
+              "type": "array",
+              "items": {
+                "enum": [
+                  "*",
+                  "indent_style",
+                  "indent_size",
+                  "tab_width",
+                  "end_of_line",
+                  "charset",
+                  "trim_trailing_whitespace",
+                  "insert_final_newline",
+                  "max_line_length",
+                  "spelling_language"
+                ]
+              },
+              "uniqueItems": true
+            }
+          },
+          "additionalProperties": false
+        },
+        "hadolint": {
+          "description": "How hadolint is generated.",
+          "type": "object",
+          "properties": {
+            "format": {
+              "description": "The native format to write.",
+              "enum": [
+                "yaml"
+              ]
+            },
+            "path": {
+              "description": "The native filename to write, among those the tool reads.",
+              "enum": [
+                ".hadolint.yaml",
+                ".hadolint.yml"
               ]
             },
             "skip": {
@@ -670,6 +756,45 @@
           },
           "additionalProperties": false
         },
+        "shellcheck": {
+          "description": "How shellcheck is generated.",
+          "type": "object",
+          "properties": {
+            "format": {
+              "description": "The native format to write.",
+              "enum": [
+                "shellcheckrc"
+              ]
+            },
+            "path": {
+              "description": "The native filename to write, among those the tool reads.",
+              "enum": [
+                ".shellcheckrc",
+                "shellcheckrc"
+              ]
+            },
+            "skip": {
+              "description": "Standard properties not projected into this tool; \"*\" skips all.",
+              "type": "array",
+              "items": {
+                "enum": [
+                  "*",
+                  "indent_style",
+                  "indent_size",
+                  "tab_width",
+                  "end_of_line",
+                  "charset",
+                  "trim_trailing_whitespace",
+                  "insert_final_newline",
+                  "max_line_length",
+                  "spelling_language"
+                ]
+              },
+              "uniqueItems": true
+            }
+          },
+          "additionalProperties": false
+        },
         "sqlfluff": {
           "description": "How sqlfluff is generated.",
           "type": "object",
@@ -684,6 +809,46 @@
               "description": "The native filename to write, among those the tool reads.",
               "enum": [
                 ".sqlfluff"
+              ]
+            },
+            "skip": {
+              "description": "Standard properties not projected into this tool; \"*\" skips all.",
+              "type": "array",
+              "items": {
+                "enum": [
+                  "*",
+                  "indent_style",
+                  "indent_size",
+                  "tab_width",
+                  "end_of_line",
+                  "charset",
+                  "trim_trailing_whitespace",
+                  "insert_final_newline",
+                  "max_line_length",
+                  "spelling_language"
+                ]
+              },
+              "uniqueItems": true
+            }
+          },
+          "additionalProperties": false
+        },
+        "tflint": {
+          "description": "How tflint is generated.",
+          "type": "object",
+          "properties": {
+            "format": {
+              "description": "The native format to write.",
+              "enum": [
+                "hcl",
+                "json"
+              ]
+            },
+            "path": {
+              "description": "The native filename to write, among those the tool reads.",
+              "enum": [
+                ".tflint.hcl",
+                ".tflint.json"
               ]
             },
             "skip": {
@@ -1078,6 +1243,14 @@
           "description": "Native gitleaks options for the files this section matches.",
           "type": "object"
         },
+        "golangci-lint": {
+          "description": "Native golangci-lint options for the files this section matches.",
+          "type": "object"
+        },
+        "hadolint": {
+          "description": "Native hadolint options for the files this section matches.",
+          "type": "object"
+        },
         "knip": {
           "description": "Native knip options for the files this section matches.",
           "type": "object"
@@ -1114,8 +1287,16 @@
           "description": "Native ryl options for the files this section matches.",
           "type": "object"
         },
+        "shellcheck": {
+          "description": "Native shellcheck options for the files this section matches.",
+          "type": "object"
+        },
         "sqlfluff": {
           "description": "Native sqlfluff options for the files this section matches.",
+          "type": "object"
+        },
+        "tflint": {
+          "description": "Native tflint options for the files this section matches.",
           "type": "object"
         },
         "tombi": {

@@ -84,8 +84,8 @@ pub(crate) fn compile(project: &Project, mut inputs: Inputs) -> Result<Plan> {
                 }
             }
             let style = style_at(project, &output.path);
-            let text =
-                render::render(&output.format, &output.value, &style).with_context(|| {
+            let text = render::native(builtin, &output.format, &output.value, &style)
+                .with_context(|| {
                     format!("rendering {} as {}", output.path.display(), output.format)
                 })?;
             alternatives.extend(output.alternatives);

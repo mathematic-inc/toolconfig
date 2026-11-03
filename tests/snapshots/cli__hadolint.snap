@@ -1,0 +1,14 @@
+---
+source: tests/cli.rs
+expression: "project.read(\".hadolint.yaml\")"
+---
+ignored:
+  - DL3008
+trustedRegistries:
+  - docker.io
+  - "*.gcr.io"
+failure-threshold: warning
+strict-labels: true
+override:
+  error:
+    - DL3001

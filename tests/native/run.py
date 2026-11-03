@@ -5,6 +5,7 @@ ToolConfig, runs the tool, and checks the result for those values.
 """
 
 import argparse
+import re
 import shutil
 import subprocess
 import sys
@@ -68,6 +69,37 @@ def sqlfluff(directory):
     assert "LT05" in result.stdout, f"max_line_length = 20:\n{result.stdout}"
 
 
+def golangci_lint(directory):
+    (directory / "go.mod").write_text("module example.com/native\n\ngo 1.24\n")
+    (directory / "main.go").write_text(
+        'package main\n\nimport "fmt"\n\nfunc main() {\n\tfmt.Println("this line runs past forty columns")\n}\n'
+    )
+    result = run(["golangci-lint", "run", "./..."], directory, check=False)
+    output = result.stdout + result.stderr
+    assert "exceeds the maximum of 40 characters" in output, f"lll line-length = 40:\n{output}"
+
+
+def tflint(directory):
+    (directory / "main.tf").write_text(
+        'variable "Region" {\n  type = string\n}\n\nvariable "zone_name" {\n  type = string\n}\n'
+    )
+    result = run(["tflint"], directory, check=False)
+    output = result.stdout + result.stderr
+    assert "`zone_name` must match the following format: Upper camel case" in output, (
+        f"custom_formats and the variable block:\n{output}"
+    )
+    assert "`Region` must match" not in output, f"variable format = upper:\n{output}"
+
+
+def shellcheck(directory):
+    (directory / "lib dir").mkdir()
+    (directory / "lib dir" / "common.sh").write_text("greeting=hello\n")
+    (directory / "script").write_text('. common.sh\necho "$greeting"\nunused=1\n')
+    result = run(["shellcheck", "script"], directory, check=False)
+    codes = set(re.findall(r"SC\d+", result.stdout))
+    assert codes == {"SC2250"}, f"shell, source-path, enable and disable:\n{result.stdout}"
+
+
 CASES = {
     "rustfmt": ('["*.rs"]\nindent_size = 3\n', rustfmt),
     "ruff": ('["*.{py,pyi}"]\nindent_size = 2\n', ruff),
@@ -84,6 +116,25 @@ CASES = {
     "sqlfluff": (
         '["*.sql"]\nmax_line_length = 20\n\n["*.sql".sqlfluff.sqlfluff]\ndialect = "ansi"\n',
         sqlfluff,
+    ),
+    "golangci-lint": (
+        '["*.go"]\nmax_line_length = 40\n\n["*.go".golangci-lint.linters]\ndefault = "none"\nenable = ["lll"]\n',
+        golangci_lint,
+    ),
+    "tflint": (
+        (
+            '["*.tf".tflint.rule.terraform_naming_convention]\nenabled = true\n'
+            'custom_formats.upper = { description = "Upper camel case", regex = "^[A-Z][a-zA-Z]*$" }\n'
+            'variable.format = "upper"\n'
+        ),
+        tflint,
+    ),
+    "shellcheck": (
+        (
+            '["*".shellcheck]\nshell = "bash"\nexternal-sources = true\n'
+            'source-path = ["lib dir"]\nenable = ["require-variable-braces"]\ndisable = ["SC2034"]\n'
+        ),
+        shellcheck,
     ),
 }
 

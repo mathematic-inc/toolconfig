@@ -1,7 +1,10 @@
 //! Native file formats, and the generated `.editorconfig`.
 
+mod hcl;
+
 use anyhow::{Context, Result, bail};
 
+use crate::catalog::Builtin;
 use crate::model::{self, STANDARD, Source};
 use crate::project::GENERATED_HEADER;
 use crate::value::Value;
@@ -34,6 +37,35 @@ impl Style {
         } else {
             " ".repeat(depth * self.indent)
         }
+    }
+}
+
+/// A tool's native file, in its own syntax or one of the shared formats.
+pub(crate) fn native(
+    builtin: &Builtin,
+    format: &str,
+    value: &Value,
+    style: &Style,
+) -> Result<String> {
+    match format {
+        "hcl" => {
+            let schema = builtin
+                .hcl
+                .as_ref()
+                .context("the catalog has no HCL schema")?;
+            hcl::render(value, schema, style).map_err(|error| {
+                if error.is::<hcl::Unplaced>() && builtin.formats.contains_key("json") {
+                    anyhow::anyhow!(
+                        "{error}\nhelp: write JSON with [toolconfig.{id}] format = \"json\", which {id} and its plugins read by their own schemas",
+                        id = builtin.id
+                    )
+                } else {
+                    error
+                }
+            })
+        }
+        "shellcheckrc" => shellcheckrc(value),
+        _ => render(format, value, style),
     }
 }
 
@@ -298,6 +330,51 @@ fn render_ini(value: &serde_json::Value) -> Result<String> {
     Ok(result)
 }
 
+/// ShellCheck's rc file: a `key=value` directive per line. An array repeats its key, as
+/// directives such as `enable` and `source-path` accumulate.
+fn shellcheckrc(value: &Value) -> Result<String> {
+    let Value::Object(fields) = value else {
+        bail!("a .shellcheckrc needs a table of directives");
+    };
+    let mut text = String::new();
+    for (key, value) in fields {
+        if key.is_empty() || !key.chars().all(|ch| ch.is_ascii_alphabetic() || ch == '-') {
+            bail!("invalid ShellCheck directive {key:?}; directives are letters and dashes");
+        }
+        let values = match value {
+            Value::Array(values) => values.as_slice(),
+            value => std::slice::from_ref(value),
+        };
+        for value in values {
+            text.push_str(&format!("{key}={}\n", directive(key, value)?));
+        }
+    }
+    Ok(text)
+}
+
+fn directive(key: &str, value: &Value) -> Result<String> {
+    let text = match value {
+        Value::String(text) | Value::Datetime(text) => text.clone(),
+        Value::Bool(_) | Value::Int(_) | Value::Float(_) => value.to_json()?.to_string(),
+        _ => bail!(
+            "ShellCheck's {key} takes strings, numbers or booleans, not {}",
+            value.describe()
+        ),
+    };
+    if text.contains(['\n', '\r', '\0']) {
+        bail!("ShellCheck's {key} cannot contain line breaks: {text:?}");
+    }
+    if !text.is_empty() && !text.contains(|ch: char| ch.is_whitespace() || "#\"'".contains(ch)) {
+        return Ok(text);
+    }
+    // ShellCheck 0.9 and later read quoted values, which may hold spaces.
+    match (text.contains('"'), text.contains('\'')) {
+        (false, _) => Ok(format!("\"{text}\"")),
+        (true, false) => Ok(format!("'{text}'")),
+        (true, true) => bail!("ShellCheck's {key} cannot hold both kinds of quote: {text:?}"),
+    }
+}
+
 /// The `.editorconfig` for a source, or `None` when it would say nothing.
 pub(crate) fn editorconfig(source: &Source) -> Result<Option<String>> {
     let name = source
@@ -435,6 +512,32 @@ mod tests {
             "'q'",
         ] {
             assert!(!plain_yaml(quoted), "{quoted:?}");
+        }
+    }
+
+    #[test]
+    fn renders_shellcheck_directives() {
+        let value = Value::from_json(&serde_json::json!({
+            "shell": "bash",
+            "external-sources": true,
+            "enable": ["quote-safe-variables", "require-variable-braces"],
+            "disable": "SC2236",
+            "source-path": ["SCRIPTDIR", "My Documents/scripts", "say \"hi\""]
+        }));
+        assert_eq!(
+            shellcheckrc(&value).unwrap(),
+            "shell=bash\nexternal-sources=true\nenable=quote-safe-variables\nenable=require-variable-braces\ndisable=SC2236\nsource-path=SCRIPTDIR\nsource-path=\"My Documents/scripts\"\nsource-path='say \"hi\"'\n"
+        );
+        for invalid in [
+            serde_json::json!({"source path": "x"}),
+            serde_json::json!({"shell": {"name": "bash"}}),
+            serde_json::json!({"source-path": "a\nb"}),
+            serde_json::json!({"source-path": "it's \"x\""}),
+        ] {
+            assert!(
+                shellcheckrc(&Value::from_json(&invalid)).is_err(),
+                "{invalid}"
+            );
         }
     }
 
