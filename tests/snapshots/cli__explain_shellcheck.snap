@@ -1,0 +1,10 @@
+---
+source: tests/cli.rs
+expression: "project.ok(&[\"explain\", \"shellcheck\"])"
+---
+shellcheck -> .shellcheckrc (from .toolconfig.toml)
+  shell             "bash"                    .toolconfig.toml:7 ["*"] shellcheck.shell
+  external-sources  true                      .toolconfig.toml:8 ["*"] shellcheck.external-sources
+  enable            ["quote-safe-variables","require-variable-braces"]  .toolconfig.toml:9 ["*"] shellcheck.enable
+  disable           "SC2236"                  .toolconfig.toml:10 ["*"] shellcheck.disable
+  source-path       ["SCRIPTDIR","lib dir"]   .toolconfig.toml:11 ["*"] shellcheck.source-path

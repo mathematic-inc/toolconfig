@@ -49,6 +49,35 @@
     "extensions": []
   },
   {
+    "id": "golangci-lint",
+    "default": "yaml",
+    "formats": { "yaml": ".golangci.yml", "toml": ".golangci.toml", "json": ".golangci.json" },
+    "alternatives": [".golangci.yml", ".golangci.yaml", ".golangci.toml", ".golangci.json"],
+    "config": { "version": "2" },
+    "extensions": ["go"],
+    "projection": [
+      {
+        "property": "max_line_length",
+        "path": ["linters", "settings", "lll", "line-length"],
+        "default": 120,
+        "when": {
+          "item": "lll",
+          "enable": ["linters", "enable"],
+          "disable": ["linters", "disable"],
+          "set": ["linters", "default"],
+          "sets": ["all", "fast"]
+        }
+      }
+    ]
+  },
+  {
+    "id": "hadolint",
+    "default": "yaml",
+    "formats": { "yaml": ".hadolint.yaml" },
+    "alternatives": [".hadolint.yaml", ".hadolint.yml"],
+    "extensions": []
+  },
+  {
     "id": "knip",
     "default": "json",
     "formats": { "json": "knip.json" },
@@ -197,6 +226,13 @@
     ]
   },
   {
+    "id": "shellcheck",
+    "default": "shellcheckrc",
+    "formats": { "shellcheckrc": ".shellcheckrc" },
+    "alternatives": [".shellcheckrc", "shellcheckrc"],
+    "extensions": []
+  },
+  {
     "id": "sqlfluff",
     "default": "ini",
     "formats": { "ini": ".sqlfluff" },
@@ -207,6 +243,32 @@
       { "property": "indent_style", "path": ["sqlfluff:indentation", "indent_unit"], "values": { "space": "space", "tab": "tab" }, "default": "space" },
       { "property": "indent_width", "path": ["sqlfluff:indentation", "tab_space_size"], "default": 4 }
     ]
+  },
+  {
+    "id": "tflint",
+    "default": "hcl",
+    "formats": { "hcl": ".tflint.hcl", "json": ".tflint.json" },
+    "alternatives": [".tflint.hcl", ".tflint.json"],
+    "extensions": ["tf"],
+    "hcl": {
+      "blocks": [
+        ["tflint"],
+        ["config"],
+        ["plugin", "*"],
+        ["rule", "*"],
+        ["rule", "terraform_naming_convention", "check"],
+        ["rule", "terraform_naming_convention", "data"],
+        ["rule", "terraform_naming_convention", "locals"],
+        ["rule", "terraform_naming_convention", "module"],
+        ["rule", "terraform_naming_convention", "output"],
+        ["rule", "terraform_naming_convention", "resource"],
+        ["rule", "terraform_naming_convention", "variable"]
+      ],
+      "attributes": [
+        ["config", "ignore_module"],
+        ["rule", "terraform_naming_convention", "custom_formats"]
+      ]
+    }
   },
   {
     "id": "tombi",

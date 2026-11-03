@@ -1,0 +1,11 @@
+---
+source: tests/cli.rs
+expression: "project.read(\".shellcheckrc\")"
+---
+shell=bash
+external-sources=true
+enable=quote-safe-variables
+enable=require-variable-braces
+disable=SC2236
+source-path=SCRIPTDIR
+source-path="lib dir"
