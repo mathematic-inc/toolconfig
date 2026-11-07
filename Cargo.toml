@@ -6,7 +6,6 @@ rust-version = "1.98"
 description = "EditorConfig, extended to your tools: generate .editorconfig and native tool configuration from TOML or Pkl"
 license = "MIT"
 repository = "https://github.com/mathematic-inc/toolconfig"
-authors = ["Mathematic Inc."]
 categories = ["command-line-utilities", "development-tools"]
 keywords = ["editorconfig", "configuration", "formatter", "linter", "cli"]
 readme = "README.md"
@@ -57,6 +56,8 @@ sha2 = "0.11.1"
 tempfile = "3.27.0"
 toml = { version = "1.2.1", features = ["preserve_order"] }
 toml_edit = "0.25.19"
+# pklr disables ureq defaults; its HTTPS agent still needs certificate roots.
+ureq = { version = "3.5.1", default-features = false, features = ["rustls-webpki-roots"] }
 
 [dev-dependencies]
 insta = "1.49.0"

@@ -66,4 +66,4 @@ jobs:
     permissions:
       contents: read
     name: Verify prebuilt distribution
-    uses: ./.github/workflows/prebuilt.yml # zizmor: ignore[self-repository] actionlint rejects the alternative syntax.
+    uses: $/.github/workflows/prebuilt.yml

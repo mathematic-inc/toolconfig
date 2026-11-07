@@ -34,7 +34,7 @@ jobs:
     permissions:
       contents: read
     needs: verify-version
-    uses: ./.github/workflows/prebuilt.yml # zizmor: ignore[self-repository] actionlint rejects the alternative syntax.
+    uses: $/.github/workflows/prebuilt.yml
 
   create-release:
     name: Publish GitHub release
@@ -115,6 +115,6 @@ jobs:
       contents: read
     name: Verify published installations
     needs: publish-crate
-    uses: ./.github/workflows/prebuilt.yml # zizmor: ignore[self-repository] actionlint rejects the alternative syntax.
+    uses: $/.github/workflows/prebuilt.yml
     with:
       verify-install: true
