@@ -7,6 +7,19 @@ use anyhow::{Result, bail};
 /// Ownership records and publication state. Distinct from the `.toolconfig` source filename.
 pub(crate) const STATE_DIR: &str = ".toolconfig-state";
 
+pub(crate) fn is_link(metadata: &std::fs::Metadata) -> bool {
+    #[cfg(windows)]
+    {
+        use std::os::windows::fs::MetadataExt;
+        use windows_sys::Win32::Storage::FileSystem::FILE_ATTRIBUTE_REPARSE_POINT;
+        metadata.file_attributes() & FILE_ATTRIBUTE_REPARSE_POINT != 0
+    }
+    #[cfg(unix)]
+    {
+        metadata.file_type().is_symlink()
+    }
+}
+
 /// Joins `path` onto `base` and removes `.` and `..` without touching the filesystem.
 pub(crate) fn absolute(base: &Path, path: &Path) -> Result<PathBuf> {
     let joined = if path.is_absolute() {

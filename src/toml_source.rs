@@ -6,7 +6,11 @@ use anyhow::{Context, Result, bail};
 use toml_edit::{Item, Table};
 
 use crate::catalog;
-use crate::model::{self, FileSpec, Origin, Property, Section, Settings, Source, ToolTable};
+use crate::model::{
+    self, FileSpec, Origin, ParsedSettings as Settings, ParsedSource as Source, Property, Section,
+    ToolTable,
+};
+use crate::repository::Repository;
 use crate::value::{self, Value};
 
 pub(crate) fn parse(path: &Path, text: &str) -> Result<Source> {
@@ -218,18 +222,22 @@ fn settings(lines: &Lines<'_>, table: TableLike<'_>) -> Result<Settings> {
     for (key, key_repr, entry) in table.entries() {
         let origin = lines.origin(key_repr.and_then(toml_edit::Key::span));
         match key {
+            "extends" => {
+                let value = convert(lines, entry, &mut Vec::new(), &mut Vec::new())?;
+                settings.extends = Repository::parse(&value, &origin)?;
+            }
             "tools" => {
                 let Entry::Item(Item::Value(toml_edit::Value::Array(array))) = entry else {
                     bail!("{origin}: tools must be an array of tool names");
                 };
+                let mut tools = Vec::new();
                 for value in array.iter() {
                     let id = value
                         .as_str()
                         .with_context(|| format!("{origin}: tools must contain only tool names"))?;
-                    settings
-                        .tools
-                        .push((id.to_owned(), lines.origin(value.span())));
+                    tools.push((id.to_owned(), lines.origin(value.span())));
                 }
+                settings.tools = Some(tools);
             }
             "files" => {
                 let files = entry
@@ -246,7 +254,7 @@ fn settings(lines: &Lines<'_>, table: TableLike<'_>) -> Result<Settings> {
             id => {
                 if catalog::get(id).is_none() {
                     bail!(
-                        "{origin}: unknown [toolconfig] key {id:?}; expected tools, files, or a tool name{}",
+                        "{origin}: unknown [toolconfig] key {id:?}; expected extends, tools, files, or a tool name{}",
                         model::suggestion(
                             id,
                             catalog::all().iter().map(|builtin| builtin.id.as_str())
@@ -256,7 +264,7 @@ fn settings(lines: &Lines<'_>, table: TableLike<'_>) -> Result<Settings> {
                 let table = entry
                     .table_like()
                     .with_context(|| format!("{origin}: [toolconfig.{id}] must be a table"))?;
-                let mut tool = model::ToolSettings::default();
+                let mut tool = model::ParsedToolSettings::default();
                 for (key, key_repr, entry) in table.entries() {
                     let origin = lines.origin(key_repr.and_then(toml_edit::Key::span));
                     let value = convert(lines, entry, &mut Vec::new(), &mut Vec::new())?;
@@ -267,9 +275,12 @@ fn settings(lines: &Lines<'_>, table: TableLike<'_>) -> Result<Settings> {
                             let Value::Array(values) = value else {
                                 bail!("{origin}: skip must be an array of property names");
                             };
-                            for value in values {
-                                tool.skip.push(string(&value, &origin, "skip")?);
-                            }
+                            tool.skip = Some(
+                                values
+                                    .iter()
+                                    .map(|value| string(value, &origin, "skip"))
+                                    .collect::<Result<_>>()?,
+                            );
                         }
                         other => bail!(
                             "{origin}: unknown key {other:?} in [toolconfig.{id}]; expected format, path or skip"
@@ -471,8 +482,11 @@ select = ["E", "F"]
         )
         .unwrap();
         assert!(source.root);
-        assert_eq!(source.settings.tools.len(), 2);
-        assert_eq!(source.settings.tool["ruff"].skip, ["max_line_length"]);
+        assert_eq!(source.settings.tools.as_ref().unwrap().len(), 2);
+        assert_eq!(
+            source.settings.tool["ruff"].skip.as_ref().unwrap(),
+            &["max_line_length"]
+        );
         let globs = source
             .sections
             .iter()

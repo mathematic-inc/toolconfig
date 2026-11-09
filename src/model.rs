@@ -7,6 +7,7 @@ use std::path::{Path, PathBuf};
 use anyhow::{Context, Result, bail};
 
 use crate::catalog;
+use crate::repository::Repository;
 use crate::value::{self, Value};
 
 /// Source filenames, in the order they are reported when several share a directory.
@@ -37,6 +38,7 @@ pub(crate) const ADOPTING_GUIDE: &str =
 pub(crate) struct Origin {
     pub(crate) file: PathBuf,
     pub(crate) line: Option<usize>,
+    repository: Option<String>,
 }
 
 impl Origin {
@@ -44,16 +46,31 @@ impl Origin {
         Self {
             file: file.to_path_buf(),
             line,
+            repository: None,
         }
     }
 
     /// The origin relative to the project root, as `path:line`.
     pub(crate) fn display(&self, root: &Path) -> String {
-        let file = self.file.strip_prefix(root).unwrap_or(&self.file);
-        let file = file.to_string_lossy().replace('\\', "/");
+        let file = self.repository.clone().unwrap_or_else(|| {
+            self.file
+                .strip_prefix(root)
+                .unwrap_or(&self.file)
+                .to_string_lossy()
+                .replace('\\', "/")
+        });
         match self.line {
             Some(line) => format!("{file}:{line}"),
             None => file,
+        }
+    }
+
+    pub(crate) fn identify_repository(&mut self, tree: &Path, name: &str) {
+        if let Ok(path) = self.file.strip_prefix(tree) {
+            self.repository = Some(format!(
+                "{name}:{}",
+                path.to_string_lossy().replace('\\', "/")
+            ));
         }
     }
 }
@@ -85,6 +102,85 @@ pub(crate) struct Source {
     pub(crate) root: bool,
     pub(crate) settings: Settings,
     pub(crate) sections: Vec<Section>,
+}
+
+/// A declaration before imports and omitted settings have been resolved.
+#[derive(Clone, Debug)]
+pub(crate) struct ParsedSource {
+    pub(crate) path: PathBuf,
+    pub(crate) dir: PathBuf,
+    pub(crate) root: bool,
+    pub(crate) settings: ParsedSettings,
+    pub(crate) sections: Vec<Section>,
+}
+
+#[derive(Clone, Debug, Default)]
+pub(crate) struct ParsedSettings {
+    pub(crate) extends: Vec<Repository>,
+    pub(crate) tools: Option<Vec<(String, Origin)>>,
+    pub(crate) tool: BTreeMap<String, ParsedToolSettings>,
+    pub(crate) files: Vec<FileSpec>,
+}
+
+#[derive(Clone, Debug, Default)]
+pub(crate) struct ParsedToolSettings {
+    pub(crate) format: Option<String>,
+    pub(crate) path: Option<String>,
+    pub(crate) skip: Option<Vec<String>>,
+}
+
+impl ParsedSource {
+    pub(crate) fn validate(&self) -> Result<()> {
+        let source = Source {
+            path: self.path.clone(),
+            dir: self.dir.clone(),
+            root: self.root,
+            settings: Settings {
+                tools: self.settings.tools.clone().unwrap_or_default(),
+                tool: self
+                    .settings
+                    .tool
+                    .iter()
+                    .map(|(id, settings)| {
+                        (
+                            id.clone(),
+                            ToolSettings {
+                                format: settings.format.clone(),
+                                path: settings.path.clone(),
+                                skip: settings.skip.clone().unwrap_or_default(),
+                            },
+                        )
+                    })
+                    .collect(),
+                files: self.settings.files.clone(),
+            },
+            sections: self.sections.clone(),
+        };
+        source.check_settings(Validation::Declaration)?;
+        source.validate_sections()
+    }
+
+    pub(crate) fn identify_repository(&mut self, tree: &Path, name: &str) {
+        if let Some(tools) = &mut self.settings.tools {
+            for (_, origin) in tools {
+                origin.identify_repository(tree, name);
+            }
+        }
+        for file in &mut self.settings.files {
+            file.origin.identify_repository(tree, name);
+        }
+        for section in &mut self.sections {
+            section.origin.identify_repository(tree, name);
+            for property in &mut section.properties {
+                property.origin.identify_repository(tree, name);
+            }
+            for tool in &mut section.tools {
+                for (_, origin) in &mut tool.origins {
+                    origin.identify_repository(tree, name);
+                }
+            }
+        }
+    }
 }
 
 #[derive(Clone, Debug, Default)]
@@ -231,9 +327,18 @@ pub(crate) fn render_scalar(value: &Value) -> Result<String> {
     Ok(text)
 }
 
+enum Validation {
+    Declaration,
+    Resolved,
+}
+
 impl Source {
-    /// Checks the rules every syntax shares, after parsing.
-    pub(crate) fn validate(&self) -> Result<()> {
+    /// Checks effective generation settings after inheritance.
+    pub(crate) fn validate_settings(&self) -> Result<()> {
+        self.check_settings(Validation::Resolved)
+    }
+
+    fn check_settings(&self, validation: Validation) -> Result<()> {
         let mut seen = BTreeSet::new();
         for (id, origin) in &self.settings.tools {
             if let Some(example) = catalog::reads_editorconfig(id) {
@@ -241,7 +346,7 @@ impl Source {
                     "{origin}: {id} reads .editorconfig; put its options in a section instead, such as {example}"
                 );
             }
-            let builtin = catalog::get(id).with_context(|| {
+            catalog::get(id).with_context(|| {
                 format!(
                     "{origin}: unknown tool {id:?}{}",
                     suggestion(id, catalog::all().iter().map(|builtin| builtin.id.as_str()))
@@ -250,42 +355,42 @@ impl Source {
             if !seen.insert(id) {
                 bail!("{origin}: {id} is listed twice in tools");
             }
-            if let Some(settings) = self.settings.tool.get(id) {
-                if let Some(format) = &settings.format
-                    && !builtin.formats.contains_key(format)
-                {
+        }
+        for (id, settings) in &self.settings.tool {
+            let builtin = catalog::get(id)
+                .with_context(|| format!("{}: unknown tool {id:?}", self.path.display()))?;
+            if let Some(format) = &settings.format
+                && !builtin.formats.contains_key(format)
+            {
+                bail!(
+                    "{}: {id} cannot be written as {format}; supported formats: {}",
+                    self.path.display(),
+                    builtin
+                        .formats
+                        .keys()
+                        .cloned()
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                );
+            }
+            if let Some(path) = &settings.path
+                && !builtin.alternatives.contains(path)
+            {
+                bail!(
+                    "{}: {id} does not read {path:?}; choose one of {}",
+                    self.path.display(),
+                    builtin.alternatives.join(", ")
+                );
+            }
+            for property in &settings.skip {
+                if property != "*" && !STANDARD.contains(&property.as_str()) {
                     bail!(
-                        "{}: {id} cannot be written as {format}; supported formats: {}",
-                        self.path.display(),
-                        builtin
-                            .formats
-                            .keys()
-                            .cloned()
-                            .collect::<Vec<_>>()
-                            .join(", ")
+                        "{}: {id} skip lists {property:?}, which is not a standard property",
+                        self.path.display()
                     );
-                }
-                if let Some(path) = &settings.path
-                    && !builtin.alternatives.contains(path)
-                {
-                    bail!(
-                        "{}: {id} does not read {path:?}; choose one of {}",
-                        self.path.display(),
-                        builtin.alternatives.join(", ")
-                    );
-                }
-                for property in &settings.skip {
-                    if property != "*" && !STANDARD.contains(&property.as_str()) {
-                        bail!(
-                            "{}: {id} skip lists {property:?}, which is not a standard property",
-                            self.path.display()
-                        );
-                    }
                 }
             }
-        }
-        for id in self.settings.tool.keys() {
-            if !seen.contains(id) {
+            if matches!(validation, Validation::Resolved) && !seen.contains(id) {
                 bail!(
                     "{}: [toolconfig.{id}] configures a tool missing from tools",
                     self.path.display()
@@ -309,6 +414,10 @@ impl Source {
                 );
             }
         }
+        Ok(())
+    }
+
+    fn validate_sections(&self) -> Result<()> {
         let mut globs = BTreeSet::new();
         for section in &self.sections {
             if !globs.insert(&section.glob) {

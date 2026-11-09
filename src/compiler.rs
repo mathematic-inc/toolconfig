@@ -197,6 +197,13 @@ fn check(
         .collect::<BTreeSet<_>>();
     for output in outputs {
         let shown = paths::relative(&project.root, &output.path);
+        if inputs
+            .immutable
+            .iter()
+            .any(|cache| crate::inputs::within(&output.path, cache))
+        {
+            bail!("{shown} collides with the repository cache");
+        }
         if let Some(previous) = seen.insert(paths::key(&output.path), &output.label) {
             bail!("{} and {previous} both write {shown}", output.label);
         }

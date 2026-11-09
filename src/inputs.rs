@@ -13,6 +13,8 @@ pub(crate) struct Inputs {
     pub(crate) directories: BTreeSet<PathBuf>,
     pub(crate) globs: BTreeMap<(PathBuf, String), Vec<PathBuf>>,
     pub(crate) excluded: BTreeSet<PathBuf>,
+    /// Repository snapshots are inputs, but their cache activity is not a watch trigger.
+    pub(crate) immutable: BTreeSet<PathBuf>,
 }
 
 impl Inputs {
@@ -43,7 +45,7 @@ impl Inputs {
                 .map_or(true, |paths| {
                     let paths = paths
                         .into_iter()
-                        .filter(|path| !self.ignores(path))
+                        .filter(|path| !self.ignores_glob(path, base))
                         .collect::<Vec<_>>();
                     let changed = &paths != expected;
                     if changed {
@@ -70,6 +72,22 @@ impl Inputs {
             .any(|directory| within(path, directory))
     }
 
+    pub(crate) fn ignores_events(&self, path: &Path) -> bool {
+        self.ignores(path)
+            || self
+                .immutable
+                .iter()
+                .any(|directory| within(path, directory))
+    }
+
+    pub(crate) fn ignores_glob(&self, path: &Path, base: &Path) -> bool {
+        self.ignores(path)
+            || self
+                .immutable
+                .iter()
+                .any(|directory| within(path, directory) && !within(base, directory))
+    }
+
     /// Reads a file and records its fingerprint, or records that it is missing.
     pub(crate) fn inspect(&mut self, path: &Path) -> Result<Option<Vec<u8>>> {
         match std::fs::read(path) {
@@ -90,6 +108,7 @@ impl Inputs {
         self.directories.extend(other.directories);
         self.globs.extend(other.globs);
         self.excluded.extend(other.excluded);
+        self.immutable.extend(other.immutable);
     }
 }
 

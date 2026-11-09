@@ -17,6 +17,20 @@ pub(crate) fn generate() -> Value {
         .map(|builtin| builtin.id.clone())
         .collect::<Vec<_>>();
     let mut settings = serde_json::Map::new();
+    settings.insert("extends".into(), json!({
+        "description": "Pinned Git repositories to inherit, in order. Local declarations take precedence.",
+        "type": "array",
+        "items": {
+            "type": "object",
+            "properties": {
+                "git": { "type": "string", "description": "HTTPS or SSH Git URL. Use Git credentials; do not embed tokens." },
+                "rev": { "type": "string", "pattern": "^([0-9a-fA-F]{40}|[0-9a-fA-F]{64})$", "description": "Full commit ID." },
+                "path": { "type": "string", "description": "Repository-relative ToolConfig source filename. Omit to discover one source at the repository root." }
+            },
+            "required": ["git", "rev"],
+            "additionalProperties": false
+        }
+    }));
     settings.insert(
         "tools".into(),
         json!({

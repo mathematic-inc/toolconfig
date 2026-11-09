@@ -791,7 +791,7 @@ fn sync_parent(_path: &Path) -> Result<()> {
 fn check_ancestors(path: &Path) -> Result<()> {
     for ancestor in path.ancestors() {
         match std::fs::symlink_metadata(ancestor) {
-            Ok(metadata) if identity::is_link(&metadata) => {
+            Ok(metadata) if paths::is_link(&metadata) => {
                 bail!("refusing symlink or reparse point {}", ancestor.display())
             }
             Ok(metadata) if ancestor != path && !metadata.is_dir() => {
@@ -810,7 +810,7 @@ fn check_ancestors(path: &Path) -> Result<()> {
 
 fn reject_nonregular(path: &Path) -> Result<()> {
     match std::fs::symlink_metadata(path) {
-        Ok(metadata) if !metadata.is_file() || identity::is_link(&metadata) => {
+        Ok(metadata) if !metadata.is_file() || paths::is_link(&metadata) => {
             bail!("refusing nonregular file {}", path.display())
         }
         Ok(_) => Ok(()),

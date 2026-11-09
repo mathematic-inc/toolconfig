@@ -1,6 +1,6 @@
 //! Filesystem identity used to distinguish journaled writes from replacements.
 
-use std::fs::{File, Metadata};
+use std::fs::File;
 use std::io;
 
 use serde::{Deserialize, Serialize};
@@ -44,18 +44,5 @@ impl Identity {
             file: (u64::from(information.nFileIndexHigh) << 32)
                 | u64::from(information.nFileIndexLow),
         })
-    }
-}
-
-pub(super) fn is_link(metadata: &Metadata) -> bool {
-    #[cfg(windows)]
-    {
-        use std::os::windows::fs::MetadataExt;
-        use windows_sys::Win32::Storage::FileSystem::FILE_ATTRIBUTE_REPARSE_POINT;
-        metadata.file_attributes() & FILE_ATTRIBUTE_REPARSE_POINT != 0
-    }
-    #[cfg(unix)]
-    {
-        metadata.file_type().is_symlink()
     }
 }

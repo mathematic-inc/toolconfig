@@ -84,8 +84,10 @@ toolconfig: Settings = new {{}}
 sections: Mapping<String, Section> = new {{}}
 
 class Settings {{
+  /// Repositories to inherit, in order. Each rev is a full commit ID.
+  `extends`: List<Repository> = List()
   /// Tools whose native configuration file is generated in this directory.
-  tools: List<String> = List()
+  tools: List<String>?
   /// Additional generated files, keyed by label.
   files: Mapping<String, File> = new {{}}
 {settings}}}
@@ -96,7 +98,16 @@ class ToolSettings {{
   /// The native filename to write, among those the tool reads.
   path: String?
   /// Standard properties not projected into this tool; "*" skips all.
-  skip: List<String> = List()
+  skip: List<String>?
+}}
+
+class Repository {{
+  /// HTTPS or SSH Git URL; authentication comes from Git.
+  git: String
+  /// Full commit ID.
+  rev: String
+  /// Source filename relative to the repository root; omitted discovers one root source.
+  path: String?
 }}
 
 class File {{

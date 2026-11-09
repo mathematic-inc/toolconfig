@@ -6,8 +6,8 @@ use std::path::{Path, PathBuf};
 use anyhow::{Context, Result, bail};
 
 use crate::inputs::Inputs;
-use crate::model::{self, SOURCE_NAMES, Source, Syntax};
-use crate::{pkl_source, toml_source};
+use crate::model::{self, ParsedSource, SOURCE_NAMES, Source, Syntax};
+use crate::{imports, pkl_source, repository, toml_source};
 
 pub(crate) struct Project {
     pub(crate) root: PathBuf,
@@ -76,7 +76,7 @@ fn single_source(dir: &Path) -> Result<Option<PathBuf>> {
 }
 
 /// Loads one source, recording what it read.
-pub(crate) fn load_source(path: &Path, root: &Path, inputs: &mut Inputs) -> Result<Source> {
+pub(crate) fn load_source(path: &Path, root: &Path, inputs: &mut Inputs) -> Result<ParsedSource> {
     match model::syntax_of(path) {
         Some(Syntax::Toml) => {
             let bytes = inputs
@@ -136,6 +136,10 @@ pub(crate) fn load(root: &Path) -> (Result<Project>, Inputs) {
 fn load_into(root: &Path, inputs: &mut Inputs) -> Result<Project> {
     let mut directories = BTreeMap::<PathBuf, (Vec<PathBuf>, bool)>::new();
     let state = root.join(crate::paths::STATE_DIR);
+    let cache = repository::cache_root(root)?.map(|path| path.canonicalize().unwrap_or(path));
+    if let Some(cache) = &cache {
+        inputs.immutable.insert(cache.clone());
+    }
     let walker = ignore::WalkBuilder::new(root)
         .hidden(false)
         .ignore(false)
@@ -144,7 +148,11 @@ fn load_into(root: &Path, inputs: &mut Inputs) -> Result<Project> {
         .filter_entry(move |entry| {
             let name = entry.file_name();
             !(entry.file_type().is_some_and(|kind| kind.is_dir())
-                && (name == ".git" || entry.path() == state))
+                && (name == ".git"
+                    || entry.path() == state
+                    || cache
+                        .as_ref()
+                        .is_some_and(|cache| crate::inputs::within(entry.path(), cache))))
         })
         .build();
     for entry in walker {
@@ -185,7 +193,7 @@ fn load_into(root: &Path, inputs: &mut Inputs) -> Result<Project> {
                     nested_roots.push(dir);
                     continue;
                 }
-                sources.push(source);
+                sources.push(imports::resolve(source, root, inputs)?);
             }
             None if editorconfig => {
                 let path = dir.join(".editorconfig");

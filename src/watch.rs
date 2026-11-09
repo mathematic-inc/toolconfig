@@ -143,7 +143,7 @@ fn update_watches(
     // New sources can appear anywhere in the project.
     let mut desired = BTreeMap::from([(root.to_path_buf(), RecursiveMode::Recursive)]);
     for path in inputs.paths() {
-        if path.starts_with(root) {
+        if path.starts_with(root) || inputs.ignores_events(path) {
             continue;
         }
         let mut directory = path.parent().unwrap_or(root);
@@ -158,7 +158,7 @@ fn update_watches(
             .or_insert(RecursiveMode::NonRecursive);
     }
     for base in inputs.directories() {
-        if base.starts_with(root) {
+        if base.starts_with(root) || inputs.ignores_events(base) {
             continue;
         }
         let directory = base.ancestors().find(|path| path.is_dir()).unwrap_or(root);
@@ -221,7 +221,7 @@ fn relevant(event: &notify::Event, root: &Path, inputs: &Inputs, outputs: &[Path
             .file_name()
             .map(|name| name.to_string_lossy().into_owned())
             .unwrap_or_default();
-        if inputs.ignores(path)
+        if inputs.ignores_events(path)
             || path.starts_with(root.join(crate::paths::STATE_DIR))
             || path.starts_with(root.join(".git"))
             || outputs.contains(path)

@@ -121,6 +121,7 @@ within a source.
 
   | Key | Meaning |
   | --- | --- |
+  | `extends` | Pinned Git repositories to inherit, in declaration order |
   | `tools` | Tools whose native file is generated here, such as `["rustfmt", "prettier"]` |
   | `<tool>.format` | One of the tool's native formats, such as `"yaml"` for prettier |
   | `<tool>.path` | One of the filenames the tool reads, such as `"_typos.toml"` |
@@ -174,6 +175,80 @@ sections {
 The package is embedded in the binary, so evaluation works offline. Other EditorConfig
 properties go in `properties`. Pkl can read `env:TOOLCONFIG_ROOT_DIR` and
 `env:TOOLCONFIG_SOURCE_DIR`.
+
+### Shared configuration from Git
+
+Import a complete configuration from a public or private repository:
+
+```toml
+root = true
+
+[toolconfig]
+extends = [
+  { git = "https://github.com/acme/toolconfig.git", rev = "0123456789abcdef0123456789abcdef01234567" }
+]
+
+["*.rs"]
+max_line_length = 100
+```
+
+Replace the example URL and commit ID with your repository and a full commit ID. Git must be
+installed for the first fetch. Branch names, tags and abbreviated IDs are rejected. To update
+shared settings, change `rev` and run `toolconfig generate`; restore the previous ID to roll back.
+
+Omit `path` to use the repository root's single ToolConfig source, or select a source with
+`path = "presets/rust/.toolconfig.toml"`. All four source filenames are supported. ToolConfig
+loads that source and its imports; it does not discover other configurations in the repository.
+Symlinks and submodules are not materialized, and repository hooks and checkout filters do not run.
+
+Imports apply depth first, in declaration order, followed by the consuming source. Imported
+sections retain their order, even when globs repeat. Native tables merge key by key; arrays
+replace earlier arrays. Standard properties retain EditorConfig's `unset` behavior.
+
+An omitted `tools` or tool `skip` list inherits the earlier list. An explicit list replaces it;
+`tools = []` disables inherited tools and `skip = []` clears inherited skips. Tool `format` and
+`path` settings override individual fields. Custom files inherit by label; a later definition
+replaces that label's complete `path`, `format` and `config` specification.
+
+Globs and generated paths apply relative to the consuming source's directory. Only its `root`
+setting controls the project boundary. Pkl relative imports still resolve beside the fetched
+Pkl source; `TOOLCONFIG_SOURCE_DIR` points there and `TOOLCONFIG_ROOT_DIR` identifies the consumer's
+project. Imported Pkl has the same filesystem, environment and network access as local Pkl: use
+repositories you trust. `toolconfig explain` identifies the repository, commit and source of
+inherited options.
+
+In Pkl, use the schema URI written by `toolconfig init --format pkl` and quote the `extends`
+keyword with backticks:
+
+```pkl
+toolconfig {
+  `extends` = List(new Repository {
+    git = "git@github.com:acme/toolconfig.git"
+    rev = "0123456789abcdef0123456789abcdef01234567"
+    path = ".toolconfig.pkl"
+  })
+  rustfmt { skip = List() }
+}
+```
+
+The new Pkl schema uses `null` for omitted `tools` and `skip` lists. Explicit `List()` clears an
+inherited list. Existing pinned schemas retain their empty-list defaults; update the schema URI
+to use repository imports.
+
+Authentication comes from Git. Public HTTPS needs no login. Private HTTPS uses your Git
+credential helper; SSH URLs use your SSH configuration and agent, including `GIT_SSH_COMMAND`.
+In CI, configure a helper or SSH key with read access to the shared repository. Test access with
+`git ls-remote <url>` without prompting. ToolConfig disables Git terminal prompts and times out
+Git commands after two minutes. Keep tokens out of URLs and sources; ToolConfig rejects embedded
+HTTPS credentials and suppresses Git's raw error output to avoid disclosing credentials.
+
+Fetched commits are stored in the user's cache directory under `toolconfig/repos`. Set
+`TOOLCONFIG_REPO_CACHE_DIR` to choose another location; relative paths resolve from the project
+root. Once fetched, a commit loads without Git or reauthentication, including while offline.
+Pkl's own external dependencies still follow its existing cache and offline settings. Watch mode
+does not poll remotes. ToolConfig verifies cached contents and ignores cache activity when
+discovering sources or watching for changes. A damaged cache produces an error with the entry
+to remove before retrying. Fetch or parse failures leave existing generated files intact.
 
 ## How values reach each tool
 

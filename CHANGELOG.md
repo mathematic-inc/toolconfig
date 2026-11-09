@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Inherit complete TOML or Pkl configurations from public and private Git repositories pinned
+  to full commit IDs. Local declarations override imported settings. Fetching uses Git's
+  credential helpers and SSH configuration, with verified snapshots cached for reuse.
+
 ## 2026.11.0 (2026-11-02)
 
 ### Features

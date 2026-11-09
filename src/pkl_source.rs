@@ -9,9 +9,11 @@ use pklr::{EvalCapabilities, Evaluator, FetchBudget, NativeCapabilities};
 use crate::catalog;
 use crate::inputs::{Inputs, digest, within};
 use crate::model::{
-    FileSpec, Origin, Property, Section, Settings, Source, ToolSettings, ToolTable,
+    FileSpec, Origin, ParsedSettings as Settings, ParsedSource as Source,
+    ParsedToolSettings as ToolSettings, Property, Section, ToolTable,
 };
 use crate::paths::absolute;
+use crate::repository::Repository;
 use crate::value::Value;
 
 const EMBEDDED_PACKAGE: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/toolconfig-package.zip"));
@@ -28,6 +30,13 @@ pub(crate) fn package_uri() -> String {
 pub(crate) fn evaluate(path: &Path, root: &Path) -> (Result<Source>, Inputs) {
     let recorded = Arc::new(Mutex::new(Inputs::default()));
     let source = (|| -> Result<Source> {
+        if let Some(cache) = crate::repository::cache_root(root)? {
+            recorded
+                .lock()
+                .map_err(|_| anyhow::anyhow!("input tracking failed"))?
+                .immutable
+                .insert(cache.canonicalize().unwrap_or(cache));
+        }
         let dir = path.parent().context("a source needs a directory")?;
         let cache = std::env::var_os("TOOLCONFIG_PKL_CACHE_DIR")
             .map(PathBuf::from)
@@ -134,16 +143,21 @@ fn settings(origin: &Origin, value: &Value) -> Result<Settings> {
     let Some(fields) = value.as_object() else {
         bail!("{origin}: toolconfig must be an object");
     };
+    // Older pinned schemas default every tool's skip list to empty.
+    let inherits = fields.iter().any(|(key, _)| key == "extends");
     for (key, value) in fields {
         match key.as_str() {
+            "extends" => settings.extends = Repository::parse(value, origin)?,
             "tools" => match value {
                 Value::Array(values) => {
+                    let mut tools = Vec::new();
                     for value in values {
                         let id = value
                             .as_str()
                             .with_context(|| format!("{origin}: tools must list tool names"))?;
-                        settings.tools.push((id.to_owned(), origin.clone()));
+                        tools.push((id.to_owned(), origin.clone()));
                     }
+                    settings.tools = Some(tools);
                 }
                 Value::Null => {}
                 _ => bail!("{origin}: tools must be a List of tool names"),
@@ -168,22 +182,26 @@ fn settings(origin: &Origin, value: &Value) -> Result<Settings> {
                 }
                 let text = |name: &str| value.get(name).and_then(Value::as_str).map(str::to_owned);
                 let skip = match value.get("skip") {
-                    Some(Value::Array(values)) => values
-                        .iter()
-                        .map(|value| {
-                            value.as_str().map(str::to_owned).with_context(|| {
-                                format!("{origin}: {id}.skip must list property names")
+                    Some(Value::Array(values)) if values.is_empty() && !inherits => None,
+                    Some(Value::Array(values)) => Some(
+                        values
+                            .iter()
+                            .map(|value| {
+                                value.as_str().map(str::to_owned).with_context(|| {
+                                    format!("{origin}: {id}.skip must list property names")
+                                })
                             })
-                        })
-                        .collect::<Result<_>>()?,
-                    _ => Vec::new(),
+                            .collect::<Result<_>>()?,
+                    ),
+                    None | Some(Value::Null) => None,
+                    _ => bail!("{origin}: {id}.skip must list property names"),
                 };
                 let tool = ToolSettings {
                     format: text("format"),
                     path: text("path"),
                     skip,
                 };
-                if tool.format.is_some() || tool.path.is_some() || !tool.skip.is_empty() {
+                if tool.format.is_some() || tool.path.is_some() || tool.skip.is_some() {
                     settings.tool.insert(id.to_owned(), tool);
                 }
             }
@@ -322,16 +340,15 @@ impl EvalCapabilities for Tracking {
         Ok(path)
     }
     fn glob(&mut self, base: &Path, pattern: &str) -> pklr::Result<Vec<PathBuf>> {
-        let paths = self
-            .inner
-            .glob(base, pattern)?
-            .into_iter()
-            .filter(|path| !within(path, &self.cache_root))
-            .collect::<Vec<_>>();
+        let paths = self.inner.glob(base, pattern)?;
         let mut recorded = self
             .recorded
             .lock()
             .map_err(|_| pklr::Error::Unsupported("input tracking failed".into()))?;
+        let paths = paths
+            .into_iter()
+            .filter(|path| !recorded.ignores_glob(path, base))
+            .collect::<Vec<_>>();
         recorded.directories.insert(base.to_path_buf());
         recorded
             .globs
