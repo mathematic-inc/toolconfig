@@ -226,6 +226,8 @@ fn populate(repository: &Repository, cache: &Path, destination: &Path) -> Result
     let manifest_file = File::create(snapshot.join("manifest.json"))?;
     serde_json::to_writer(&manifest_file, &manifest)?;
     manifest_file.sync_all()?;
+    // Windows cannot move the snapshot directory while its manifest is open.
+    drop(manifest_file);
     fs::rename(&snapshot, destination).context("cannot install the repository snapshot")?;
     Ok(())
 }
