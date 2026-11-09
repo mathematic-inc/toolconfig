@@ -56,13 +56,12 @@ fn collect(
             collect(parsed, root, inputs, stack, resolved)
         })()
         .map_err(|error| {
-            anyhow::anyhow!(
-                "importing {identity}: {}",
-                format!("{error:#}").replace(
-                    &snapshot.tree.to_string_lossy().to_string(),
-                    &format!("{}:", repository.name())
-                )
-            )
+            let tree = snapshot.tree.to_string_lossy();
+            let label = format!("{}:", repository.name());
+            let message = format!("{error:#}")
+                .replace(tree.as_ref(), &label)
+                .replace(&tree.replace('\\', "/"), &label);
+            anyhow::anyhow!("importing {identity}: {message}")
         });
         stack.pop();
         imported?;

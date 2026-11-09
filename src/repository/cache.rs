@@ -117,7 +117,7 @@ fn acquire(lock: &File) -> Result<()> {
             Ok(()) => return Ok(()),
             Err(error) if error.kind() == std::io::ErrorKind::Interrupted => continue,
             Err(error)
-                if error.kind() == std::io::ErrorKind::WouldBlock
+                if error.raw_os_error() == fs2::lock_contended_error().raw_os_error()
                     && start.elapsed() < LOCK_TIMEOUT =>
             {
                 std::thread::sleep(LOCK_RETRY_INTERVAL);
