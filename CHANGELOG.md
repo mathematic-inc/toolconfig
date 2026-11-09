@@ -1,6 +1,8 @@
 # Changelog
 
-## Unreleased
+## 2026.11.2 (2026-11-08)
+
+### Features
 
 - Inherit complete TOML or Pkl configurations from public and private Git repositories pinned
   to full commit IDs. Local declarations override imported settings. Fetching uses Git's
