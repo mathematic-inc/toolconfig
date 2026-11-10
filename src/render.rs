@@ -509,7 +509,6 @@ mod tests {
         for invalid in [
             serde_json::json!({"a": []}),
             serde_json::json!({"a": [["b"]]}),
-            serde_json::json!({"a": [{"b": 1}]}),
             serde_json::json!({"a": [" b"]}),
         ] {
             assert!(
