@@ -1094,40 +1094,6 @@
                 ]
               },
               "uniqueItems": true
-            },
-            "styles": {
-              "description": "The styles ToolConfig carries and writes under StylesPath.",
-              "type": "array",
-              "items": {
-                "enum": [
-                  "STE"
-                ]
-              },
-              "uniqueItems": true
-            },
-            "vocabularies": {
-              "description": "The vocabularies to write under StylesPath/config/vocabularies, by name.",
-              "type": "object",
-              "additionalProperties": {
-                "type": "object",
-                "properties": {
-                  "accept": {
-                    "description": "Regular expressions for terms with a required spelling. Every rule of every style ignores them.",
-                    "type": "array",
-                    "items": {
-                      "type": "string"
-                    }
-                  },
-                  "reject": {
-                    "description": "Regular expressions that Vale reports as errors.",
-                    "type": "array",
-                    "items": {
-                      "type": "string"
-                    }
-                  }
-                },
-                "additionalProperties": false
-              }
             }
           },
           "additionalProperties": false

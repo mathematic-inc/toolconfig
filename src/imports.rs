@@ -92,7 +92,6 @@ fn apply(target: &mut Settings, incoming: ParsedSettings) {
         if let Some(skip) = incoming.skip {
             settings.skip = skip;
         }
-        settings.vale.apply(incoming.vale);
     }
     merge_files(&mut target.files, incoming.files);
 }

@@ -4,9 +4,8 @@
 
 ### Features
 
-- Vale joins the catalog (`.vale.ini`). `[toolconfig.vale]` writes the bundled `STE` style and the
-  vocabularies of a source under `StylesPath`. `STE` checks the part of Simplified Technical English
-  that a linter can check. It is not a check for compliance with ASD-STE100.
+- Vale joins the catalog (`.vale.ini`). A style and a vocabulary are plain files. The README shows
+  how a shared Pkl source writes them with `files`.
 - INI files, which sqlfluff and Vale read, take lists. A list is one comma-separated entry, and a
   comma inside an item is written `\,`.
 

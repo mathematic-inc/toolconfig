@@ -1,9 +1,0 @@
-# "has stopped" and "had been" are perfect tenses. Use the simple past or the simple present.
-# A participle that is an adjective, as in "has required fields", also matches. Rewrite it, or add the word to the vocabulary.
-extends: existence
-message: "Do not use the perfect tense '%s'. Use the simple past or the simple present."
-link: https://github.com/mathematic-inc/toolconfig#the-ste-style
-level: error
-ignorecase: true
-raw:
-  - '\b(?:have|has|had|having)\s+(?:(?:not|never|already|just|also|still|yet|only|always|ever|\w+ly)\s+)*(?:been|\w+ed|become|begun|come|done|gone|made|taken|given|shown|known|seen|chosen|broken|spoken|written|found|got|gotten|kept|lost|sent|built|brought|bought|caught|taught|thought|heard|held|paid|sold|told|won|met|understood|forgotten|fallen|driven|drawn|eaten|hidden|risen|thrown|worn|grown|flown|blown|frozen|stolen|torn)\b'

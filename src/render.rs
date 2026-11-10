@@ -450,14 +450,14 @@ mod tests {
             "StylesPath": ".vale/styles",
             "Vocab": ["A", "B"],
             "*.md": {
-                "BasedOnStyles": ["Vale", "STE"],
+                "BasedOnStyles": ["Vale", "Local"],
                 "TokenIgnores": ["(x{2,3})", "(y)"],
-                "STE.SentenceLength": "NO"
+                "Local.Letters": "NO"
             }
         }));
         assert_eq!(
             render("ini", &value, &Style::default()).unwrap(),
-            "StylesPath = .vale/styles\nVocab = A, B\n\n[*.md]\nBasedOnStyles = Vale, STE\nTokenIgnores = (x{2\\,3}), (y)\nSTE.SentenceLength = NO\n"
+            "StylesPath = .vale/styles\nVocab = A, B\n\n[*.md]\nBasedOnStyles = Vale, Local\nTokenIgnores = (x{2\\,3}), (y)\nLocal.Letters = NO\n"
         );
         for invalid in [
             serde_json::json!({"a": []}),

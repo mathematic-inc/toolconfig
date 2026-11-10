@@ -62,6 +62,9 @@ For each native file:
 Adding `max_line_length` makes editors show a ruler, and makes editorconfig-checker enforce it
 unless its `Disable.MaxLineLength` option is set.
 
+Vale also reads styles and vocabularies from its `StylesPath` folder. Leave hand-written ones where
+they are. To write them from a shared source, use `files`, as the Vale section of the README shows.
+
 ## 4. Generate and verify
 
 1. Delete each converted `.editorconfig`. ToolConfig refuses to overwrite hand-written files.

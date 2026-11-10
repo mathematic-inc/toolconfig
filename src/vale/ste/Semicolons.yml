@@ -1,8 +1,0 @@
-# A semicolon joins two sentences. Write two sentences.
-extends: existence
-message: "Do not use a semicolon. Write two sentences."
-link: https://github.com/mathematic-inc/toolconfig#the-ste-style
-level: error
-nonword: true
-tokens:
-  - ';'

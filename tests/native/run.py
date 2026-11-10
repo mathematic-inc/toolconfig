@@ -5,6 +5,7 @@ ToolConfig, runs the tool, and checks the result for those values.
 """
 
 import argparse
+import json
 import re
 import shutil
 import subprocess
@@ -101,19 +102,26 @@ def shellcheck(directory):
 
 
 def vale(directory):
-    # The style's own cases, which `vale test` runs from the project: its rules alone, and its
-    # configuration and vocabulary. Every rule must report in at least one case.
-    styles = directory / ".vale" / "styles" / "STE"
-    cases = Path(__file__).resolve().parent.parent / "vale" / "ste"
-    for case in sorted(cases.glob("*.test.yml")):
-        shutil.copy(case, styles)
-    result = run(["vale", "test", "--coverage", str(styles)], directory, check=False)
-    output = result.stdout + result.stderr
-    assert result.returncode == 0, f"vale test --coverage:\n{output}"
-    (directory / "terms.md").write_text("We utilize the runner. Stop the building.\n")
-    result = run(["vale", "--output=line", "terms.md"], directory, check=False)
-    assert result.returncode == 1, f"a rejected term is an error:\n{result.stdout}{result.stderr}"
-    assert "Vale.Avoid" in result.stdout, f"reject.txt:\n{result.stdout}"
+    # Vale reads each list as items with commas between them. A comma inside an item is `\,`.
+    # The patterns hide "xxx" and "yyy". Vale reports only "zzz".
+    styles = directory / ".vale" / "styles"
+    (styles / "Local").mkdir(parents=True)
+    (styles / "Local" / "Letters.yml").write_text(
+        "extends: existence\nmessage: Avoid '%s'.\nlevel: error\ntokens: [xxx, yyy, zzz]\n"
+    )
+    for name, word in (("Terms", "utilize"), ("Phrases", "leverage")):
+        vocabulary = styles / "config" / "vocabularies" / name
+        vocabulary.mkdir(parents=True)
+        (vocabulary / "reject.txt").write_text(f"{word}\n")
+    (directory / "notes.md").write_text("We utilize and leverage xxx yyy zzz.\n")
+    result = run(["vale", "--output=JSON", "notes.md"], directory, check=False)
+    assert result.returncode == 1, f"alerts:\n{result.stdout}{result.stderr}"
+    alerts = [(alert["Check"], alert["Match"]) for alert in json.loads(result.stdout)["notes.md"]]
+    assert alerts == [
+        ("Vale.Avoid", "utilize"),
+        ("Vale.Avoid", "leverage"),
+        ("Local.Letters", "zzz"),
+    ], f"Vocab, BasedOnStyles and TokenIgnores:\n{alerts}"
 
 
 CASES = {
@@ -154,13 +162,9 @@ CASES = {
     ),
     "vale": (
         (
-            '[toolconfig.vale]\nstyles = ["STE"]\n\n'
-            "[toolconfig.vale.vocabularies.Terms]\n"
-            'accept = ["(?i)staging", "RunnerRunner"]\nreject = ["(?i)utilize"]\n\n'
-            '["*".vale]\nMinAlertLevel = "warning"\nVocab = "Terms"\n\n'
-            '["*".vale.formats]\nrs = "md"\n\n'
-            '["*".vale."*.{md,rs}"]\nBasedOnStyles = ["Vale", "STE"]\n'
-            '"Vale.Spelling" = "NO"\n"Vale.Repetition" = "NO"\n"Vale.Terms" = "warning"\n'
+            '["*".vale]\nVocab = ["Terms", "Phrases"]\n\n'
+            '["*".vale."*.md"]\nBasedOnStyles = ["Vale", "Local"]\n"Vale.Spelling" = "NO"\n'
+            'TokenIgnores = ["(x{2,3})", "(y+)"]\n'
         ),
         vale,
     ),

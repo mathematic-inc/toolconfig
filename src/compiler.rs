@@ -9,14 +9,13 @@ use crate::inputs::Inputs;
 use crate::paths::{self, absolute};
 use crate::project::Project;
 use crate::projection::{self, Explained};
-use crate::{cascade, catalog, render, vale};
+use crate::{cascade, catalog, render};
 
 pub(crate) const STAGE_PREFIX: &str = ".toolconfig-stage-";
 
 pub(crate) struct Output {
     pub(crate) path: PathBuf,
-    /// What produced the output: `.editorconfig`, a tool id, `files.<label>`, or a tool's companion
-    /// files, `<tool>.<kind>.<name>`.
+    /// What produced the output: `.editorconfig`, a tool id, or `files.<label>`.
     pub(crate) label: String,
     pub(crate) format: String,
     pub(crate) bytes: Vec<u8>,
@@ -27,12 +26,6 @@ pub(crate) struct Output {
 impl Output {
     pub(crate) fn is_editorconfig(&self) -> bool {
         self.label == ".editorconfig"
-    }
-
-    /// A tool's native file. The other labels, `.editorconfig`, `files.<label>` and a tool's
-    /// companion files such as `vale.style.<name>`, hold a dot, which no tool's id does.
-    pub(crate) fn is_tool(&self) -> bool {
-        !self.label.contains('.')
     }
 }
 
@@ -95,36 +88,6 @@ pub(crate) fn compile(project: &Project, mut inputs: Inputs) -> Result<Plan> {
                 .with_context(|| {
                     format!("rendering {} as {}", output.path.display(), output.format)
                 })?;
-            if id == "vale" {
-                let settings = source
-                    .settings
-                    .tool
-                    .get(id)
-                    .map(|settings| settings.vale.clone())
-                    .unwrap_or_default();
-                for file in
-                    vale::files(&settings, &output.value, &output.path).with_context(|| {
-                        format!("{id} in {}", paths::relative(&project.root, &source.path))
-                    })?
-                {
-                    if !file.path.starts_with(&project.root) {
-                        bail!(
-                            "{}: {} writes outside the project: {}",
-                            paths::relative(&project.root, &source.path),
-                            file.label,
-                            file.path.display()
-                        );
-                    }
-                    outputs.push(Output {
-                        path: file.path,
-                        label: file.label,
-                        format: file.format.to_owned(),
-                        bytes: file.bytes,
-                        source: source.path.clone(),
-                        explanation: Vec::new(),
-                    });
-                }
-            }
             alternatives.extend(output.alternatives);
             outputs.push(Output {
                 path: output.path,

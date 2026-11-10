@@ -53,56 +53,30 @@ pub(crate) fn generate() -> Value {
         section.insert(key.into(), schema);
     }
     for builtin in catalog::all() {
-        let mut tool = json!({
-            "description": format!("How {} is generated.", builtin.id),
-            "type": "object",
-            "properties": {
-                "format": {
-                    "description": "The native format to write.",
-                    "enum": builtin.formats.keys().collect::<Vec<_>>()
-                },
-                "path": {
-                    "description": "The native filename to write, among those the tool reads.",
-                    "enum": builtin.alternatives
-                },
-                "skip": {
-                    "description": "Standard properties not projected into this tool; \"*\" skips all.",
-                    "type": "array",
-                    "items": { "enum": std::iter::once("*").chain(crate::model::STANDARD).collect::<Vec<_>>() },
-                    "uniqueItems": true
-                }
-            },
-            "additionalProperties": false
-        });
-        if builtin.id == "vale" {
-            tool["properties"]["styles"] = json!({
-                "description": "The styles ToolConfig carries and writes under StylesPath.",
-                "type": "array",
-                "items": { "enum": crate::vale::STYLES.iter().map(|style| style.name).collect::<Vec<_>>() },
-                "uniqueItems": true
-            });
-            tool["properties"]["vocabularies"] = json!({
-                "description": "The vocabularies to write under StylesPath/config/vocabularies, by name.",
+        settings.insert(
+            builtin.id.clone(),
+            json!({
+                "description": format!("How {} is generated.", builtin.id),
                 "type": "object",
-                "additionalProperties": {
-                    "type": "object",
-                    "properties": {
-                        "accept": {
-                            "description": "Regular expressions for terms with a required spelling. Every rule of every style ignores them.",
-                            "type": "array",
-                            "items": { "type": "string" }
-                        },
-                        "reject": {
-                            "description": "Regular expressions that Vale reports as errors.",
-                            "type": "array",
-                            "items": { "type": "string" }
-                        }
+                "properties": {
+                    "format": {
+                        "description": "The native format to write.",
+                        "enum": builtin.formats.keys().collect::<Vec<_>>()
                     },
-                    "additionalProperties": false
-                }
-            });
-        }
-        settings.insert(builtin.id.clone(), tool);
+                    "path": {
+                        "description": "The native filename to write, among those the tool reads.",
+                        "enum": builtin.alternatives
+                    },
+                    "skip": {
+                        "description": "Standard properties not projected into this tool; \"*\" skips all.",
+                        "type": "array",
+                        "items": { "enum": std::iter::once("*").chain(crate::model::STANDARD).collect::<Vec<_>>() },
+                        "uniqueItems": true
+                    }
+                },
+                "additionalProperties": false
+            }),
+        );
         section.insert(
             builtin.id.clone(),
             json!({

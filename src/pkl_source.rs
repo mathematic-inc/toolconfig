@@ -14,7 +14,6 @@ use crate::model::{
 };
 use crate::paths::absolute;
 use crate::repository::Repository;
-use crate::vale;
 use crate::value::Value;
 
 const EMBEDDED_PACKAGE: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/toolconfig-package.zip"));
@@ -197,22 +196,12 @@ fn settings(origin: &Origin, value: &Value) -> Result<Settings> {
                     None | Some(Value::Null) => None,
                     _ => bail!("{origin}: {id}.skip must list property names"),
                 };
-                let vale = if id == "vale" {
-                    vale::Settings::parse(value.get("styles"), value.get("vocabularies"), origin)?
-                } else {
-                    vale::Settings::default()
-                };
                 let tool = ToolSettings {
                     format: text("format"),
                     path: text("path"),
                     skip,
-                    vale,
                 };
-                if tool.format.is_some()
-                    || tool.path.is_some()
-                    || tool.skip.is_some()
-                    || !tool.vale.is_empty()
-                {
+                if tool.format.is_some() || tool.path.is_some() || tool.skip.is_some() {
                     settings.tool.insert(id.to_owned(), tool);
                 }
             }

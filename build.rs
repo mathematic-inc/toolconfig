@@ -60,13 +60,8 @@ fn pkl_module(ids: &[String]) -> String {
     let mut settings = String::new();
     let mut tables = String::new();
     for id in ids {
-        let class = if id == "vale" {
-            "ValeSettings"
-        } else {
-            "ToolSettings"
-        };
         settings.push_str(&format!(
-            "  /// How {id} is generated.\n  `{id}`: {class} = new {{}}\n"
+            "  /// How {id} is generated.\n  `{id}`: ToolSettings = new {{}}\n"
         ));
         tables.push_str(&format!(
             "  /// Native {id} options for the files this section matches.\n  `{id}`: Dynamic = new {{}}\n"
@@ -97,27 +92,13 @@ class Settings {{
   files: Mapping<String, File> = new {{}}
 {settings}}}
 
-open class ToolSettings {{
+class ToolSettings {{
   /// The native format to write.
   format: String?
   /// The native filename to write, among those the tool reads.
   path: String?
   /// Standard properties not projected into this tool; "*" skips all.
   skip: List<String>?
-}}
-
-class ValeSettings extends ToolSettings {{
-  /// The styles ToolConfig carries and writes under StylesPath: STE.
-  styles: List<String>?
-  /// The vocabularies to write under StylesPath/config/vocabularies, by name.
-  vocabularies: Mapping<String, Vocabulary> = new {{}}
-}}
-
-class Vocabulary {{
-  /// Regular expressions for terms with a required spelling. Every rule of every style ignores them.
-  accept: List<String> = List()
-  /// Regular expressions that Vale reports as errors.
-  reject: List<String> = List()
 }}
 
 class Repository {{

@@ -11,7 +11,6 @@ use crate::model::{
     ToolTable,
 };
 use crate::repository::Repository;
-use crate::vale;
 use crate::value::{self, Value};
 
 pub(crate) fn parse(path: &Path, text: &str) -> Result<Source> {
@@ -266,7 +265,6 @@ fn settings(lines: &Lines<'_>, table: TableLike<'_>) -> Result<Settings> {
                     .table_like()
                     .with_context(|| format!("{origin}: [toolconfig.{id}] must be a table"))?;
                 let mut tool = model::ParsedToolSettings::default();
-                let (mut styles, mut vocabularies) = (None, None);
                 for (key, key_repr, entry) in table.entries() {
                     let origin = lines.origin(key_repr.and_then(toml_edit::Key::span));
                     let value = convert(lines, entry, &mut Vec::new(), &mut Vec::new())?;
@@ -284,24 +282,10 @@ fn settings(lines: &Lines<'_>, table: TableLike<'_>) -> Result<Settings> {
                                     .collect::<Result<_>>()?,
                             );
                         }
-                        "styles" if id == "vale" => styles = Some((value, origin)),
-                        "vocabularies" if id == "vale" => vocabularies = Some((value, origin)),
                         other => bail!(
-                            "{origin}: unknown key {other:?} in [toolconfig.{id}]; expected {}",
-                            if id == "vale" {
-                                "format, path, skip, styles or vocabularies"
-                            } else {
-                                "format, path or skip"
-                            }
+                            "{origin}: unknown key {other:?} in [toolconfig.{id}]; expected format, path or skip"
                         ),
                     }
-                }
-                if let Some((_, origin)) = styles.as_ref().or(vocabularies.as_ref()) {
-                    tool.vale = vale::Settings::parse(
-                        styles.as_ref().map(|(value, _)| value),
-                        vocabularies.as_ref().map(|(value, _)| value),
-                        origin,
-                    )?;
                 }
                 settings.tool.insert(id.to_owned(), tool);
             }

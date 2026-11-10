@@ -4,12 +4,12 @@ expression: "project.read(\".vale.ini\")"
 ---
 StylesPath = .vale/styles
 MinAlertLevel = warning
-Vocab = Terms
+Vocab = Terms, Phrases
 
 [formats]
 rs = md
 
 [*.{md,rs}]
-BasedOnStyles = Vale, STE
+BasedOnStyles = Vale, Local
 Vale.Spelling = NO
-TokenIgnores = (x{2\,3}), (y)
+TokenIgnores = (x{2\,3}), (y+)
