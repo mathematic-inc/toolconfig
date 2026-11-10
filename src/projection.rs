@@ -657,17 +657,23 @@ impl Context<'_> {
             self.builtin.id,
             self.native_dir_source()
         );
+        // A tool that reads one file per run refuses a second source that lists it.
         match directory {
-            Some(directory) if !directory.is_empty() => format!(
+            Some(directory) if self.builtin.nearest && !directory.is_empty() => format!(
                 "add a source in {} that lists {} in tools, or {skip}",
                 paths::relative(self.root(), &source.dir.join(directory)),
                 self.builtin.id
             ),
-            _ if source.dir != self.dir && source.dir.starts_with(self.dir) => format!(
-                "list {} in tools in {}, or {skip}",
-                self.builtin.id,
-                paths::relative(self.root(), &source.path)
-            ),
+            _ if self.builtin.nearest
+                && source.dir != self.dir
+                && source.dir.starts_with(self.dir) =>
+            {
+                format!(
+                    "list {} in tools in {}, or {skip}",
+                    self.builtin.id,
+                    paths::relative(self.root(), &source.path)
+                )
+            }
             _ => format!("make the values agree for every file the tool handles, or {skip}"),
         }
     }

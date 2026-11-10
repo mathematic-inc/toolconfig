@@ -316,8 +316,8 @@
     "default": "ini",
     "formats": { "ini": ".vale.ini" },
     "alternatives": [".vale.ini", "_vale.ini", "vale.ini", ".config/vale.ini"],
-    "config": { "StylesPath": ".vale/styles" },
-    "extensions": []
+    "extensions": [],
+    "nearest": false
   },
   {
     "id": "yamlfmt",

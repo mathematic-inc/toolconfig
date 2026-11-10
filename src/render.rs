@@ -7,7 +7,7 @@ use anyhow::{Context, Result, bail};
 use crate::catalog::Builtin;
 use crate::model::{self, STANDARD, Source};
 use crate::project::GENERATED_HEADER;
-use crate::value::Value;
+use crate::value::{Value, display_path};
 
 /// Layout for generated files, taken from the EditorConfig properties at the file's own path,
 /// so formatters that read the same properties leave the file unchanged.
@@ -65,8 +65,54 @@ pub(crate) fn native(
             })
         }
         "shellcheckrc" => shellcheckrc(value),
+        "ini" if builtin.id == "vale" => {
+            let text = render(format, value, style)?;
+            vale_ini(value)?;
+            Ok(text)
+        }
         _ => render(format, value, style),
     }
+}
+
+/// Refuses values that Vale's INI reader changes. It ends a value at ` #` or ` ;`, removes the
+/// quotes or backticks around a value, and reads a backslash at the end of a value or list item
+/// as an escape.
+fn vale_ini(value: &Value) -> Result<()> {
+    for (path, leaf) in value.leaves() {
+        let items = match leaf {
+            Value::Array(items) => items.as_slice(),
+            leaf => std::slice::from_ref(leaf),
+        };
+        let texts: Vec<String> = items
+            .iter()
+            .map(|item| match item {
+                Value::String(text) | Value::Datetime(text) => text.clone(),
+                item => item.describe(),
+            })
+            .collect();
+        let line = texts.join(", ");
+        let quoted = ['\'', '"'].into_iter().any(|quote| {
+            line.len() >= 2
+                && line.starts_with(quote)
+                && line.ends_with(quote)
+                && !line[1..line.len() - 1].contains(quote)
+        });
+        let problem = if line.contains(" #") || line.contains(" ;") {
+            "Vale reads \" #\" or \" ;\" as the start of a comment"
+        } else if quoted || line.starts_with('`') || line.starts_with("\"\"\"") {
+            "Vale removes the quotes or backticks around a value"
+        } else if texts.iter().any(|text| text.ends_with('\\')) {
+            "Vale reads a backslash at the end of a value or list item as an escape"
+        } else {
+            continue;
+        };
+        bail!(
+            "vale.{} = {}: {problem}",
+            display_path(&path),
+            leaf.describe()
+        );
+    }
+    Ok(())
 }
 
 pub(crate) fn render(format: &str, value: &Value, style: &Style) -> Result<String> {
@@ -284,8 +330,8 @@ fn plain_yaml(text: &str) -> bool {
         && !text.chars().any(|ch| ch.is_control())
 }
 
-/// INI with sections, as sqlfluff and Vale read it. A list is one entry whose items are separated
-/// by commas, with a comma inside an item written `\,`, as Vale reads its lists.
+/// Vale's TokenIgnores and BlockIgnores read `\,` in a list item as a comma, and any other
+/// backslash inside an item as it is.
 fn render_ini(value: &serde_json::Value) -> Result<String> {
     fn scalar(value: &serde_json::Value) -> Result<String> {
         match value {
@@ -467,6 +513,29 @@ mod tests {
         ] {
             assert!(
                 render("ini", &Value::from_json(&invalid), &Style::default()).is_err(),
+                "{invalid}"
+            );
+        }
+    }
+
+    #[test]
+    fn refuses_values_that_vale_reads_differently() {
+        let vale = crate::catalog::get("vale").unwrap();
+        for invalid in [
+            serde_json::json!({"a": "x #y"}),
+            serde_json::json!({"*.md": {"a": ["x", ";y"]}}),
+            serde_json::json!({"a": "`x`"}),
+            serde_json::json!({"a": ["'x", "y'"]}),
+            serde_json::json!({"a": ["x\\", "y"]}),
+        ] {
+            let value = Value::from_json(&invalid);
+            assert!(
+                native(vale, "ini", &value, &Style::default()).is_err(),
+                "{invalid}"
+            );
+            // Other INI readers, such as sqlfluff, read these values as written.
+            assert!(
+                render("ini", &value, &Style::default()).is_ok(),
                 "{invalid}"
             );
         }

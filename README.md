@@ -312,6 +312,7 @@ INI file from the `vale` table in `["*"]`:
 tools = ["vale"]
 
 ["*".vale]
+StylesPath = ".vale/styles"
 MinAlertLevel = "warning"
 Vocab = "Acme"
 
@@ -323,7 +324,7 @@ BasedOnStyles = ["Vale", "Acme"]
 "Vale.Spelling" = "NO"
 ```
 
-- Global keys go directly in the table. `StylesPath` is `.vale/styles` unless you set it.
+- Core settings go directly in the table.
 - A nested table is a section of the file, named by its glob. `["*".vale."*.md"]` writes `[*.md]`,
   and `["*".vale.formats]` writes `[formats]`. Vale reads one INI file per run, so every option
   goes in `["*"]`, as for shellcheck.

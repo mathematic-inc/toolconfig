@@ -114,7 +114,7 @@ def vale(directory):
         vocabulary.mkdir(parents=True)
         (vocabulary / "reject.txt").write_text(f"{word}\n")
     (directory / "notes.md").write_text("We utilize and leverage xxx yyy zzz.\n")
-    result = run(["vale", "--output=JSON", "notes.md"], directory, check=False)
+    result = run(["vale", "--no-global", "--output=JSON", "notes.md"], directory, check=False)
     assert result.returncode == 1, f"alerts:\n{result.stdout}{result.stderr}"
     alerts = [(alert["Check"], alert["Match"]) for alert in json.loads(result.stdout)["notes.md"]]
     assert alerts == [
@@ -162,7 +162,7 @@ CASES = {
     ),
     "vale": (
         (
-            '["*".vale]\nVocab = ["Terms", "Phrases"]\n\n'
+            '["*".vale]\nStylesPath = ".vale/styles"\nVocab = ["Terms", "Phrases"]\n\n'
             '["*".vale."*.md"]\nBasedOnStyles = ["Vale", "Local"]\n"Vale.Spelling" = "NO"\n'
             'TokenIgnores = ["(x{2,3})", "(y+)"]\n'
         ),

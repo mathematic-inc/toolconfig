@@ -830,28 +830,28 @@ fn shellcheck_writes_its_rc_file() {
     );
 }
 
-const VALE: &str = r#"root = true
-
-[toolconfig]
-tools = ["vale"]
-
-["*".vale]
-MinAlertLevel = "warning"
-Vocab = ["Terms", "Phrases"]
-
-["*".vale.formats]
-rs = "md"
-
-["*".vale."*.{md,rs}"]
-BasedOnStyles = ["Vale", "Local"]
-"Vale.Spelling" = "NO"
-TokenIgnores = ["(x{2,3})", "(y+)"]
-"#;
-
 #[test]
-fn vale_writes_its_ini_file() {
+fn vale_reads_one_configuration_file() {
     let project = Project::new();
-    project.write(".toolconfig.toml", VALE);
-    project.ok(&["generate"]);
-    insta::assert_snapshot!("vale", project.read(".vale.ini"));
+    project.write(
+        ".toolconfig.toml",
+        "root = true\n[toolconfig]\ntools = [\"vale\"]\n[\"*\".vale]\nMinAlertLevel = \"warning\"\n[\"docs/**\".vale]\nMinAlertLevel = \"error\"\n",
+    );
+    let error = project.fail(&["validate"]);
+    assert!(
+        error.contains("cannot follow section \"docs/**\""),
+        "{error}"
+    );
+    assert!(!error.contains("vale in tools"), "{error}");
+    project.write(
+        "docs/.toolconfig.toml",
+        "[toolconfig]\ntools = [\"vale\"]\n",
+    );
+    let error = project.fail(&["validate"]);
+    assert!(
+        error.contains(
+            "vale reads one configuration file per run, so it cannot be enabled in both . and docs"
+        ),
+        "{error}"
+    );
 }
