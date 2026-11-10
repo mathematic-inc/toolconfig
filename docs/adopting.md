@@ -15,8 +15,8 @@ can also follow it by hand. Ask your assistant:
 2. List which tools have native files. The supported tools are actionlint, buf, cargo-deny,
    csharpier, editorconfig-checker, gitleaks, golangci-lint, hadolint, knip, lychee, oxfmt,
    oxlint, prettier, ruff, rumdl, rustfmt, ryl, shellcheck, sqlfluff, tflint, tombi, ty,
-   typespec, typos, yamlfmt and yamllint. Leave files for other tools as they are; ToolConfig
-   does not touch them.
+   typespec, typos, vale, yamlfmt and yamllint. Leave files for other tools as they are;
+   ToolConfig does not touch them.
 
 ## 2. Convert `.editorconfig`
 
@@ -43,7 +43,8 @@ For each native file:
    `["*".ruff]`, `["*".ruff.lint]`, `[["*".gitleaks.allowlists]]`. Options that only apply to
    some file types can go under that type's section, such as `["*.md".prettier]`. A
    `.tflint.hcl` moves in its JSON form: `rule "x" { enabled = false }` becomes
-   `["*.tf".tflint.rule.x]` with `enabled = false`.
+   `["*.tf".tflint.rule.x]` with `enabled = false`. A `.vale.ini` moves into `["*".vale]`, and
+   its `[*.md]` section becomes `["*".vale."*.md"]`.
 4. Formatting options become standard properties instead, in a section for the files the tool
    formats. Each pair below is one value:
 
@@ -61,6 +62,9 @@ For each native file:
 
 Adding `max_line_length` makes editors show a ruler, and makes editorconfig-checker enforce it
 unless its `Disable.MaxLineLength` option is set.
+
+Vale also reads styles and vocabularies from its `StylesPath` folder. Leave hand-written ones where
+they are. To write them from a shared source, use `files`, as the Vale section of the README shows.
 
 ## 4. Generate and verify
 

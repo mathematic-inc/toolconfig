@@ -829,3 +829,29 @@ fn shellcheck_writes_its_rc_file() {
         "{error}"
     );
 }
+
+#[test]
+fn vale_reads_one_configuration_file() {
+    let project = Project::new();
+    project.write(
+        ".toolconfig.toml",
+        "root = true\n[toolconfig]\ntools = [\"vale\"]\n[\"*\".vale]\nMinAlertLevel = \"warning\"\n[\"docs/**\".vale]\nMinAlertLevel = \"error\"\n",
+    );
+    let error = project.fail(&["validate"]);
+    assert!(
+        error.contains("cannot follow section \"docs/**\""),
+        "{error}"
+    );
+    assert!(!error.contains("vale in tools"), "{error}");
+    project.write(
+        "docs/.toolconfig.toml",
+        "[toolconfig]\ntools = [\"vale\"]\n",
+    );
+    let error = project.fail(&["validate"]);
+    assert!(
+        error.contains(
+            "vale reads one configuration file per run, so it cannot be enabled in both . and docs"
+        ),
+        "{error}"
+    );
+}

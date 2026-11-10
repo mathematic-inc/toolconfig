@@ -7,7 +7,7 @@ use anyhow::{Context, Result, bail};
 use crate::catalog::Builtin;
 use crate::model::{self, STANDARD, Source};
 use crate::project::GENERATED_HEADER;
-use crate::value::Value;
+use crate::value::{Value, display_path};
 
 /// Layout for generated files, taken from the EditorConfig properties at the file's own path,
 /// so formatters that read the same properties leave the file unchanged.
@@ -65,8 +65,52 @@ pub(crate) fn native(
             })
         }
         "shellcheckrc" => shellcheckrc(value),
+        "ini" if builtin.id == "vale" => {
+            let text = render(format, value, style)?;
+            vale_ini(value)?;
+            Ok(text)
+        }
         _ => render(format, value, style),
     }
+}
+
+/// Refuses values that Vale's INI reader changes.
+fn vale_ini(value: &Value) -> Result<()> {
+    for (path, leaf) in value.leaves() {
+        let items = match leaf {
+            Value::Array(items) => items.as_slice(),
+            leaf => std::slice::from_ref(leaf),
+        };
+        let texts: Vec<String> = items
+            .iter()
+            .map(|item| match item {
+                Value::String(text) | Value::Datetime(text) => text.clone(),
+                item => item.describe(),
+            })
+            .collect();
+        let line = texts.join(", ");
+        let quoted = ['\'', '"'].into_iter().any(|quote| {
+            line.len() >= 2
+                && line.starts_with(quote)
+                && line.ends_with(quote)
+                && !line[1..line.len() - 1].contains(quote)
+        });
+        let problem = if line.contains(" #") || line.contains(" ;") {
+            "Vale reads \" #\" or \" ;\" as the start of a comment"
+        } else if quoted || line.starts_with('`') || line.starts_with("\"\"\"") {
+            "Vale removes the quotes or backticks around a value"
+        } else if texts.iter().any(|text| text.ends_with('\\')) {
+            "Vale reads a backslash at the end of a value or list item as an escape"
+        } else {
+            continue;
+        };
+        bail!(
+            "vale.{} = {}: {problem}",
+            display_path(&path),
+            leaf.describe()
+        );
+    }
+    Ok(())
 }
 
 pub(crate) fn render(format: &str, value: &Value, style: &Style) -> Result<String> {
@@ -284,6 +328,8 @@ fn plain_yaml(text: &str) -> bool {
         && !text.chars().any(|ch| ch.is_control())
 }
 
+/// Vale's TokenIgnores and BlockIgnores read `\,` in a list item as a comma, and every other
+/// backslash as it is. sqlfluff and Vale's other lists split at every comma.
 fn render_ini(value: &serde_json::Value) -> Result<String> {
     fn scalar(value: &serde_json::Value) -> Result<String> {
         match value {
@@ -294,7 +340,24 @@ fn render_ini(value: &serde_json::Value) -> Result<String> {
                 Ok(value.clone())
             }
             serde_json::Value::Number(_) | serde_json::Value::Bool(_) => Ok(value.to_string()),
-            _ => bail!("INI entries must be strings, numbers, or booleans"),
+            serde_json::Value::Array(items) => {
+                if items.is_empty() {
+                    bail!("INI lists cannot be empty\nhelp: remove the key");
+                }
+                Ok(items
+                    .iter()
+                    .map(|item| match item {
+                        serde_json::Value::String(_)
+                        | serde_json::Value::Number(_)
+                        | serde_json::Value::Bool(_) => {
+                            scalar(item).map(|text| text.replace(',', "\\,"))
+                        }
+                        _ => bail!("INI list items must be strings, numbers, or booleans"),
+                    })
+                    .collect::<Result<Vec<_>>>()?
+                    .join(", "))
+            }
+            _ => bail!("INI entries must be strings, numbers, booleans, or lists of them"),
         }
     }
     fn entry(result: &mut String, key: &str, value: &serde_json::Value) -> Result<()> {
@@ -305,7 +368,8 @@ fn render_ini(value: &serde_json::Value) -> Result<String> {
         {
             bail!("invalid INI key {key:?}");
         }
-        result.push_str(&format!("{key} = {}\n", scalar(value)?));
+        let text = scalar(value).with_context(|| format!("INI key {key:?}"))?;
+        result.push_str(&format!("{key} = {text}\n"));
         Ok(())
     }
     let object = value
@@ -423,6 +487,56 @@ mod tests {
             render("ini", &value, &Style::default()).unwrap(),
             "[sqlfluff]\ndialect = postgres\nmax_line_length = 100\n\n[sqlfluff:indentation]\ntab_space_size = 4\n"
         );
+    }
+
+    #[test]
+    fn renders_ini_lists_and_top_level_keys() {
+        let value = Value::from_json(&serde_json::json!({
+            "StylesPath": ".vale/styles",
+            "Vocab": ["A", "B"],
+            "*.md": {
+                "BasedOnStyles": ["Vale", "Local"],
+                "TokenIgnores": ["(x{2,3})", "(y)"],
+                "Local.Letters": "NO"
+            }
+        }));
+        assert_eq!(
+            render("ini", &value, &Style::default()).unwrap(),
+            "StylesPath = .vale/styles\nVocab = A, B\n\n[*.md]\nBasedOnStyles = Vale, Local\nTokenIgnores = (x{2\\,3}), (y)\nLocal.Letters = NO\n"
+        );
+        for invalid in [
+            serde_json::json!({"a": []}),
+            serde_json::json!({"a": [["b"]]}),
+            serde_json::json!({"a": [" b"]}),
+        ] {
+            assert!(
+                render("ini", &Value::from_json(&invalid), &Style::default()).is_err(),
+                "{invalid}"
+            );
+        }
+    }
+
+    #[test]
+    fn refuses_values_that_vale_reads_differently() {
+        let vale = crate::catalog::get("vale").unwrap();
+        for invalid in [
+            serde_json::json!({"a": "x #y"}),
+            serde_json::json!({"*.md": {"a": ["x", ";y"]}}),
+            serde_json::json!({"a": "`x`"}),
+            serde_json::json!({"a": ["'x", "y'"]}),
+            serde_json::json!({"a": ["x\\", "y"]}),
+        ] {
+            let value = Value::from_json(&invalid);
+            assert!(
+                native(vale, "ini", &value, &Style::default()).is_err(),
+                "{invalid}"
+            );
+            // Other INI readers, such as sqlfluff, read these values as written.
+            assert!(
+                render("ini", &value, &Style::default()).is_ok(),
+                "{invalid}"
+            );
+        }
     }
 
     #[test]

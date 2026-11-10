@@ -126,7 +126,7 @@ within a source.
   | `<tool>.format` | One of the tool's native formats, such as `"yaml"` for prettier |
   | `<tool>.path` | One of the filenames the tool reads, such as `"_typos.toml"` |
   | `<tool>.skip` | Standard properties not projected into the tool; `["*"]` skips all |
-  | `files.<label>` | A custom output with `path`, `format` and `config` |
+  | `files.<label>` | A custom output with `path`, `format` and `config`. `format` is `json`, `yaml`, `toml`, `ini`, `text` (a string as it is) or `lines` (a list of strings, one on each line) |
 
 - **`["<glob>"]`** is an EditorConfig section. The quotes are required. Inside a section:
   - Standard properties (`indent_style`, `indent_size`, `tab_width`, `end_of_line`, `charset`,
@@ -289,7 +289,7 @@ the same properties leave them unchanged.
 | tombi | indent, width, line ending | `tombi.toml` |
 | typos | spelling language | `typos.toml` |
 | yamlfmt | indent, width, line ending | `.yamlfmt` |
-| actionlint, buf, cargo-deny, editorconfig-checker, gitleaks, hadolint, knip, lychee, oxlint, shellcheck, tflint, ty, typespec | native options only | their usual file |
+| actionlint, buf, cargo-deny, editorconfig-checker, gitleaks, hadolint, knip, lychee, oxlint, shellcheck, tflint, ty, typespec, vale | native options only | their usual file |
 
 shfmt and ktlint read `.editorconfig` themselves; write their keys in sections.
 
@@ -301,6 +301,64 @@ form: `["*.tf".tflint.plugin.aws]` becomes `plugin "aws" { ... }`. ToolConfig kn
 are blocks in tflint's own schema and its bundled terraform ruleset; for a plugin's nested block,
 such as `assume_role`, set `tflint.format = "json"` to write `.tflint.json`, which each plugin
 reads by its own schema.
+
+## Vale
+
+Vale reads `.vale.ini` and a `StylesPath` folder of styles and vocabularies. ToolConfig writes the
+INI file from the `vale` table in `["*"]`:
+
+```toml
+root = true
+
+[toolconfig]
+tools = ["vale"]
+
+["*".vale]
+StylesPath = ".vale/styles"
+MinAlertLevel = "warning"
+Vocab = "Acme"
+
+["*".vale.formats]
+rs = "md"
+
+["*".vale."*.{md,rs}"]
+BasedOnStyles = ["Vale", "Acme"]
+"Vale.Spelling" = "NO"
+```
+
+- Core settings go directly in the table.
+- A nested table is a section with the same name: `["*".vale."*.md"]` writes `[*.md]`, and
+  `["*".vale.formats]` writes `[formats]`.
+- `.vale.ini` applies to every file Vale checks, so every option goes in `["*"]`, as for
+  shellcheck. Vale reads the first `.vale.ini` from its working directory up, so enable vale in
+  one directory only.
+- A list is one comma-separated entry. ToolConfig writes a comma inside an item as `\,`, which is
+  how Vale reads a comma in a pattern.
+- Quote a key that has a dot, as in `"Vale.Spelling" = "NO"`. TOML reads an unquoted dot as a
+  nested table.
+
+Styles and vocabularies are plain files, and a `files` output can write them. A shared repository
+can write them into every project that extends it. This block of its `.toolconfig.pkl` writes the
+rule files of the `styles` folder and one vocabulary:
+
+```pkl
+toolconfig {
+  files {
+    for (uri, rule in read*("styles/*.yml")) {
+      [uri.split("/").last] {
+        path = ".vale/styles/Acme/\(uri.split("/").last)"
+        format = "text"
+        config = rule.text
+      }
+    }
+    ["vale-acme"] {
+      path = ".vale/styles/config/vocabularies/Acme/reject.txt"
+      format = "lines"
+      config = List("(?i)utilize")
+    }
+  }
+}
+```
 
 ## Commands
 
@@ -355,7 +413,7 @@ python tests/native/run.py --toolconfig target/debug/toolconfig
 ```
 
 The native suite runs rustfmt, ruff, prettier, oxfmt, tombi, yamllint, sqlfluff, golangci-lint,
-tflint and shellcheck against generated configuration; `mise install` provides them. After
+tflint, shellcheck and vale against generated configuration; `mise install` provides them. After
 changing the catalog, refresh the schema with `cargo run -- schema > schema/toolconfig.schema.json`.
 Releases are described in [docs/releasing.md](docs/releasing.md).
 

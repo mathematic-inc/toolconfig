@@ -1,10 +1,11 @@
 """Run real tools against generated configuration and check that they follow it.
 
-Each case writes a source with distinctive EditorConfig values, generates native files with
-ToolConfig, runs the tool, and checks the result for those values.
+Each case writes a source with distinctive values, generates native files with ToolConfig, runs
+the tool, and checks the result for those values.
 """
 
 import argparse
+import json
 import re
 import shutil
 import subprocess
@@ -100,6 +101,28 @@ def shellcheck(directory):
     assert codes == {"SC2250"}, f"shell, source-path, enable and disable:\n{result.stdout}"
 
 
+def vale(directory):
+    # TokenIgnores hides "xxx" only when Vale reads the `\,` in `(x{2\,3})` as a comma.
+    styles = directory / ".vale" / "styles"
+    (styles / "Local").mkdir(parents=True)
+    (styles / "Local" / "Letters.yml").write_text(
+        "extends: existence\nmessage: Avoid '%s'.\nlevel: error\ntokens: [xxx, yyy, zzz]\n"
+    )
+    for name, word in (("Terms", "utilize"), ("Phrases", "leverage")):
+        vocabulary = styles / "config" / "vocabularies" / name
+        vocabulary.mkdir(parents=True)
+        (vocabulary / "reject.txt").write_text(f"{word}\n")
+    (directory / "notes.md").write_text("We utilize and leverage xxx yyy zzz.\n")
+    result = run(["vale", "--no-global", "--output=JSON", "notes.md"], directory, check=False)
+    assert result.returncode == 1, f"alerts:\n{result.stdout}{result.stderr}"
+    alerts = [(alert["Check"], alert["Match"]) for alert in json.loads(result.stdout)["notes.md"]]
+    assert set(alerts) == {
+        ("Vale.Avoid", "utilize"),
+        ("Vale.Avoid", "leverage"),
+        ("Local.Letters", "zzz"),
+    }, f"Vocab, BasedOnStyles and TokenIgnores:\n{alerts}"
+
+
 CASES = {
     "rustfmt": ('["*.rs"]\nindent_size = 3\n', rustfmt),
     "ruff": ('["*.{py,pyi}"]\nindent_size = 2\n', ruff),
@@ -135,6 +158,14 @@ CASES = {
             'source-path = ["lib dir"]\nenable = ["require-variable-braces"]\ndisable = ["SC2034"]\n'
         ),
         shellcheck,
+    ),
+    "vale": (
+        (
+            '["*".vale]\nStylesPath = ".vale/styles"\nVocab = ["Terms", "Phrases"]\n\n'
+            '["*".vale."*.md"]\nBasedOnStyles = ["Vale", "Local"]\n"Vale.Spelling" = "NO"\n'
+            'TokenIgnores = ["(x{2,3})", "(y+)"]\n'
+        ),
+        vale,
     ),
 }
 
