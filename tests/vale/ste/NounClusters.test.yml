@@ -1,0 +1,12 @@
+- name: reports a cluster of four words
+  rule: NounClusters.yml
+  input: Set the edge cache key hash now.
+  contains: Do not use more than three words in a noun cluster
+- name: leaves a cluster of two words alone
+  rule: NounClusters.yml
+  input: Set the cache key now.
+  absent: STE.NounClusters
+- name: leaves code spans alone
+  rule: NounClusters.yml
+  input: Use `foo` `bar` `baz` `qux` here.
+  absent: STE.NounClusters

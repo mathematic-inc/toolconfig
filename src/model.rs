@@ -8,6 +8,7 @@ use anyhow::{Context, Result, bail};
 
 use crate::catalog;
 use crate::repository::Repository;
+use crate::vale;
 use crate::value::{self, Value};
 
 /// Source filenames, in the order they are reported when several share a directory.
@@ -127,6 +128,7 @@ pub(crate) struct ParsedToolSettings {
     pub(crate) format: Option<String>,
     pub(crate) path: Option<String>,
     pub(crate) skip: Option<Vec<String>>,
+    pub(crate) vale: vale::Settings,
 }
 
 impl ParsedSource {
@@ -148,6 +150,7 @@ impl ParsedSource {
                                 format: settings.format.clone(),
                                 path: settings.path.clone(),
                                 skip: settings.skip.clone().unwrap_or_default(),
+                                vale: settings.vale.clone(),
                             },
                         )
                     })
@@ -195,6 +198,7 @@ pub(crate) struct ToolSettings {
     pub(crate) format: Option<String>,
     pub(crate) path: Option<String>,
     pub(crate) skip: Vec<String>,
+    pub(crate) vale: vale::Settings,
 }
 
 #[derive(Clone, Debug)]
@@ -390,6 +394,7 @@ impl Source {
                     );
                 }
             }
+            settings.vale.validate(&self.path)?;
             if matches!(validation, Validation::Resolved) && !seen.contains(id) {
                 bail!(
                     "{}: [toolconfig.{id}] configures a tool missing from tools",

@@ -312,6 +312,14 @@
     ]
   },
   {
+    "id": "vale",
+    "default": "ini",
+    "formats": { "ini": ".vale.ini" },
+    "alternatives": [".vale.ini", "_vale.ini", "vale.ini", ".config/vale.ini"],
+    "config": { "StylesPath": ".vale/styles" },
+    "extensions": []
+  },
+  {
     "id": "yamlfmt",
     "default": "yaml",
     "formats": { "yaml": ".yamlfmt" },

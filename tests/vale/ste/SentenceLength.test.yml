@@ -1,0 +1,36 @@
+- name: reports a sentence of 26 words
+  rule: SentenceLength.yml
+  input: stop the job and then start the host and stop the job and then start the host and stop the job and then start the host.
+  contains: The sentence has 26 words
+- name: leaves a sentence of 25 words alone
+  rule: SentenceLength.yml
+  input: stop the job and then start the host and stop the job and then start the host and stop the job and then start the.
+  absent: STE.SentenceLength
+- name: reports an item of a bulleted list
+  rule: SentenceLength.yml
+  input: "- stop the job and then start the host and stop the job and then start the host and stop the job and then start the host."
+  contains: The sentence has 26 words
+- name: leaves a heading alone
+  rule: SentenceLength.yml
+  input: "# stop the job and then start the host and stop the job and then start the host and stop the job and then start the host and stop the job"
+  absent: STE.SentenceLength
+- name: leaves a step to StepLength
+  rule: SentenceLength.yml
+  input: "1. stop the job and then start the host and stop the job and then start the host and stop the job and then start the host."
+  absent: STE.SentenceLength
+- name: takes a code span out of the count
+  rule: SentenceLength.yml
+  input: Run `--flag --flag --flag --flag --flag --flag --flag --flag --flag --flag --flag --flag --flag --flag --flag --flag --flag --flag --flag --flag --flag --flag --flag --flag --flag --flag --flag --flag --flag --flag` now.
+  absent: STE.SentenceLength
+- name: counts text in parentheses as one word
+  rule: SentenceLength.yml
+  input: Use the label (stop the job and then start the host and stop the job and then start the host and stop the job and then start the host and stop the job and then start the host and stop the job and) now.
+  absent: STE.SentenceLength
+- name: counts quoted text as one word
+  rule: SentenceLength.yml
+  input: Say "stop the job and then start the host and stop the job and then start the host and stop the job and then start the host and stop the job and then start the host and stop the job and" now.
+  absent: STE.SentenceLength
+- name: counts a hyphenated word as one word
+  rule: SentenceLength.yml
+  input: long-running long-running long-running long-running long-running long-running long-running long-running long-running long-running long-running long-running long-running long-running long-running long-running long-running long-running long-running long-running long-running long-running long-running long-running long-running.
+  absent: STE.SentenceLength

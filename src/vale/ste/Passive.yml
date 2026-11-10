@@ -1,0 +1,9 @@
+# A form of "be" with a past participle can be the passive voice. Use the active voice when the agent is known.
+# An adjective, as in "is open", is not passive. The first group lists the common ones that end in -ed or -en.
+extends: existence
+message: "'%s' can be the passive voice. Use the active voice when you know the agent."
+link: https://github.com/mathematic-inc/toolconfig#the-ste-style
+level: warning
+ignorecase: true
+raw:
+  - '\b(?:am|is|are|was|were|be|been|being)\s+(?:(?:not|also|only|always|never|still|already|yet|just|\w+ly)\s+)*(?!(?:open|even|often|seven|eleven|ten|then|when|token|children|women|men|green|screen|garden|kitchen|need|seed|speed|feed|red|bed|indeed|hundred)\b)(?:\w+ed|\w+en|been|done|gone|made|run|set|put|cut|let|hit|shut|read|lost|left|held|kept|sent|built|brought|bought|caught|taught|thought|found|got|gotten|heard|met|paid|said|sold|told|understood|won|written|taken|given|shown|known|seen|chosen|broken|spoken|stolen|frozen|drawn|driven|eaten|fallen|forgotten|hidden|risen|thrown|worn|torn|grown|flown|blown)\b'

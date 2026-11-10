@@ -1,0 +1,15 @@
+- name: reports have, has and had with a participle
+  rule: PerfectTense.yml
+  input: |
+    The host has stopped the job. We have made the change. The job had been stopped.
+    The host has not yet stopped the job. The host has just started.
+  contains:
+    - "'has stopped'"
+    - "'have made'"
+    - "'had been'"
+    - "'has not yet stopped'"
+    - "'has just started'"
+- name: leaves the simple past and a possession alone
+  rule: PerfectTense.yml
+  input: The host had a bug. The host has two jobs. The host stopped the job.
+  absent: STE.PerfectTense

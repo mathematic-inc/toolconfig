@@ -1,0 +1,20 @@
+# Project cases: the vocabulary and the sections that the source writes into .vale.ini.
+- name: a term the vocabulary accepts is not reported as an -ing form
+  input: Deploy to staging.
+  absent: STE.Ing
+- name: an -ing form outside the vocabulary is reported
+  input: Stop the running job.
+  contains: STE.Ing
+- name: a term the vocabulary rejects is an error
+  input: We utilize the runner.
+  contains: Avoid using 'utilize'
+- name: an accepted term has the spelling the vocabulary gives
+  input: Stop the runnerrunner job.
+  contains: Use 'RunnerRunner' instead of 'runnerrunner'
+- name: a comment in a Rust file is read as Markdown
+  format: rs
+  input: |
+    /// Don't stop the `a; b` job.
+    fn main() {}
+  contains: STE.Contractions
+  absent: STE.Semicolons

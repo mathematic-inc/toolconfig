@@ -287,7 +287,7 @@ fn explain(requested: Option<&Path>, tool: Option<&str>, dir: Option<&Path>) -> 
         .transpose()?;
     let mut shown = 0;
     for output in &plan.outputs {
-        if output.is_editorconfig() || output.label.starts_with("files.") {
+        if !output.is_tool() {
             continue;
         }
         if tool.is_some_and(|tool| tool != output.label)

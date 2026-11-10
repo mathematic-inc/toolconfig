@@ -1,0 +1,20 @@
+- name: reports e.g., i.e., etc., et al., cf. and vs.
+  rule: LatinAbbreviations.yml
+  input: |
+    Use a label, e.g. the host label. Use a label, i.e. the host label.
+    Use the runner, host, etc. See Smith et al. and cf. the log. Compare the host vs. the runner.
+  contains:
+    - "'e.g.'"
+    - "'i.e.'"
+    - "'etc.'"
+    - "'et al.'"
+    - "'cf.'"
+    - "'vs.'"
+- name: leaves a path alone
+  rule: LatinAbbreviations.yml
+  input: Read the file /etc/hosts for the host list.
+  absent: STE.LatinAbbreviations
+- name: leaves an editor name alone
+  rule: LatinAbbreviations.yml
+  input: Use VS Code to open the file.
+  absent: STE.LatinAbbreviations

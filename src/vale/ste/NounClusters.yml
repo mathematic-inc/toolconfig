@@ -1,0 +1,14 @@
+# A run of four or more nouns, adjectives and -ing or -ed words is a noun cluster. Use three words at most.
+# Vale tags each word with a statistical model. It misses some clusters, and it reports some runs that are not clusters.
+# The pattern skips the placeholder that Vale puts in place of a code span.
+extends: sequence
+message: "Do not use more than three words in a noun cluster. Write the long name in full once, then shorten it."
+link: https://github.com/mathematic-inc/toolconfig#the-ste-style
+level: warning
+tokens:
+  - tag: NN|NNS|NNP|NNPS|JJ|VBG|VBN
+    negate: true
+  - pattern: '[A-Za-z][A-Za-z-]*'
+    tag: NN|NNS|NNP|NNPS|JJ|VBG|VBN
+    min: 4
+    target: true

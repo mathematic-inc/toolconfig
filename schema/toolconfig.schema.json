@@ -69,6 +69,7 @@
               "ty",
               "typespec",
               "typos",
+              "vale",
               "yamlfmt",
               "yamllint"
             ]
@@ -1056,6 +1057,81 @@
           },
           "additionalProperties": false
         },
+        "vale": {
+          "description": "How vale is generated.",
+          "type": "object",
+          "properties": {
+            "format": {
+              "description": "The native format to write.",
+              "enum": [
+                "ini"
+              ]
+            },
+            "path": {
+              "description": "The native filename to write, among those the tool reads.",
+              "enum": [
+                ".vale.ini",
+                "_vale.ini",
+                "vale.ini",
+                ".config/vale.ini"
+              ]
+            },
+            "skip": {
+              "description": "Standard properties not projected into this tool; \"*\" skips all.",
+              "type": "array",
+              "items": {
+                "enum": [
+                  "*",
+                  "indent_style",
+                  "indent_size",
+                  "tab_width",
+                  "end_of_line",
+                  "charset",
+                  "trim_trailing_whitespace",
+                  "insert_final_newline",
+                  "max_line_length",
+                  "spelling_language"
+                ]
+              },
+              "uniqueItems": true
+            },
+            "styles": {
+              "description": "The styles ToolConfig carries and writes under StylesPath.",
+              "type": "array",
+              "items": {
+                "enum": [
+                  "STE"
+                ]
+              },
+              "uniqueItems": true
+            },
+            "vocabularies": {
+              "description": "The vocabularies to write under StylesPath/config/vocabularies, by name.",
+              "type": "object",
+              "additionalProperties": {
+                "type": "object",
+                "properties": {
+                  "accept": {
+                    "description": "Regular expressions for terms with a required spelling. Every rule of every style ignores them.",
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "reject": {
+                    "description": "Regular expressions that Vale reports as errors.",
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          },
+          "additionalProperties": false
+        },
         "yamlfmt": {
           "description": "How yamlfmt is generated.",
           "type": "object",
@@ -1340,6 +1416,10 @@
         },
         "typos": {
           "description": "Native typos options for the files this section matches.",
+          "type": "object"
+        },
+        "vale": {
+          "description": "Native vale options for the files this section matches.",
           "type": "object"
         },
         "yamlfmt": {

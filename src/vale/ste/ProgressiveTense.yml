@@ -1,0 +1,9 @@
+# "is running" and "was being" are progressive tenses. Use the simple present, the simple past or the simple future.
+# An adjective that ends in -ing, as in "is missing", also matches. Rewrite it, or add the word to the vocabulary.
+extends: existence
+message: "Do not use the progressive tense '%s'. Use the simple present or the simple future."
+link: https://github.com/mathematic-inc/toolconfig#the-ste-style
+level: error
+ignorecase: true
+raw:
+  - '\b(?:am|is|are|was|were|be|been|being)\s+(?:(?:not|never|also|then|only|always|still|already|yet|just|currently|\w+ly)\s+)*(?!(?:string|strings|thing|things|something|anything|nothing|everything|during|bring|spring|sting|swing|ceiling|sibling|morning|evening|warning|warnings)\b)[A-Za-z]{2,}ing\b'

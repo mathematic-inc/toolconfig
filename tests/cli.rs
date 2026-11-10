@@ -829,3 +829,199 @@ fn shellcheck_writes_its_rc_file() {
         "{error}"
     );
 }
+
+const VALE: &str = r#"root = true
+
+[toolconfig]
+tools = ["vale"]
+
+[toolconfig.vale]
+styles = ["STE"]
+
+[toolconfig.vale.vocabularies.Terms]
+accept = ["(?i)runner", "RunnerRunner"]
+reject = ["(?i)utilize"]
+
+["*".vale]
+MinAlertLevel = "warning"
+Vocab = "Terms"
+
+["*".vale.formats]
+rs = "md"
+
+["*".vale."*.{md,rs}"]
+BasedOnStyles = ["Vale", "STE"]
+"Vale.Spelling" = "NO"
+TokenIgnores = ["(x{2,3})", "(y)"]
+"#;
+
+#[test]
+fn vale_writes_its_ini_file_styles_and_vocabulary() {
+    let project = Project::new();
+    project.write(".toolconfig.toml", VALE);
+    project.ok(&["generate"]);
+    insta::assert_snapshot!("vale", project.read(".vale.ini"));
+    insta::assert_snapshot!("vale_files", project.ok(&["list"]));
+    insta::assert_snapshot!("explain_vale", project.ok(&["explain", "vale"]));
+    assert_eq!(
+        project.read(".vale/styles/config/vocabularies/Terms/accept.txt"),
+        "(?i)runner\nRunnerRunner\n"
+    );
+    assert_eq!(
+        project.read(".vale/styles/config/vocabularies/Terms/reject.txt"),
+        "(?i)utilize\n"
+    );
+    assert!(
+        project
+            .read(".vale/styles/STE/Semicolons.yml")
+            .contains("level: error")
+    );
+    // Every generated file but .editorconfig is ignored, and a style file is held like the rest.
+    project.ok(&["init", "--gitignore"]);
+    let ignore = project.read(".gitignore");
+    assert!(ignore.contains("/.vale.ini\n"), "{ignore}");
+    assert!(ignore.contains("/.vale/styles/STE/Ing.yml\n"), "{ignore}");
+    assert!(project.ok(&["check"]).starts_with("Up to date"));
+    assert_check_catches_drift(&project, ".vale.ini", &VALE.replace("warning", "error"));
+    let rule = project.read(".vale/styles/STE/Ing.yml");
+    project.write(".vale/styles/STE/Ing.yml", &format!("{rule}# edited\n"));
+    let stdout = String::from_utf8(project.run(&["check"]).stdout).unwrap();
+    assert_eq!(stdout, "modified\t.vale/styles/STE/Ing.yml\n");
+    project.write(".vale/styles/STE/Ing.yml", &rule);
+    // A style a source stops listing, and a vocabulary it drops, are obsolete.
+    project.write(
+        ".toolconfig.toml",
+        &VALE
+            .replace("styles = [\"STE\"]", "styles = []")
+            .replace("reject = [\"(?i)utilize\"]", ""),
+    );
+    let stdout = String::from_utf8(project.run(&["check"]).stdout).unwrap();
+    assert!(
+        stdout.contains("obsolete\t.vale/styles/STE/Ing.yml\n"),
+        "{stdout}"
+    );
+    assert!(
+        stdout.contains("obsolete\t.vale/styles/config/vocabularies/Terms/reject.txt\n"),
+        "{stdout}"
+    );
+    project.ok(&["generate"]);
+    assert!(!project.exists(".vale/styles/STE/Ing.yml"));
+    assert!(!project.exists(".vale/styles/config/vocabularies/Terms/reject.txt"));
+}
+
+#[test]
+fn vale_puts_its_styles_beside_the_ini_file() {
+    let project = Project::new();
+    project.write(
+        ".toolconfig.toml",
+        r#"root = true
+
+[toolconfig]
+tools = ["vale"]
+
+[toolconfig.vale]
+styles = ["STE"]
+
+["*".vale]
+StylesPath = "docs/styles"
+"#,
+    );
+    project.ok(&["generate"]);
+    assert!(project.exists("docs/styles/STE/Passive.yml"));
+    assert!(
+        project
+            .read(".vale.ini")
+            .starts_with("StylesPath = docs/styles\n")
+    );
+}
+
+#[test]
+fn vale_reads_its_settings_from_pkl() {
+    let project = Project::new();
+    let version = env!("CARGO_PKG_VERSION");
+    project.write(
+        ".toolconfig.pkl",
+        &format!(
+            r#"amends "package://github.com/mathematic-inc/toolconfig/releases/download/v{version}/toolconfig@{version}#/ToolConfig.pkl"
+
+root = true
+
+local ordinary = List("runner").map((word) -> "(?i)\(word)")
+
+toolconfig {{
+  tools = List("vale")
+  vale {{
+    styles = List("STE")
+    vocabularies {{
+      ["Terms"] {{
+        accept = ordinary + List("RunnerRunner")
+        reject = List("(?i)utilize")
+      }}
+    }}
+  }}
+}}
+
+sections {{
+  ["*"] {{
+    vale {{
+      MinAlertLevel = "warning"
+      Vocab = "Terms"
+      ["formats"] {{ ["rs"] = "md" }}
+      ["*.{{md,rs}}"] {{
+        BasedOnStyles = List("Vale", "STE")
+        ["Vale.Spelling"] = "NO"
+        TokenIgnores = List("(x{{2,3}})", "(y)")
+      }}
+    }}
+  }}
+}}
+"#
+        ),
+    );
+    let toml = Project::new();
+    toml.write(".toolconfig.toml", VALE);
+    project.ok(&["generate"]);
+    toml.ok(&["generate"]);
+    for file in [
+        ".vale.ini",
+        ".vale/styles/config/vocabularies/Terms/accept.txt",
+        ".vale/styles/config/vocabularies/Terms/reject.txt",
+    ] {
+        assert_eq!(project.read(file), toml.read(file), "{file}");
+    }
+}
+
+#[test]
+fn vale_settings_are_checked() {
+    let project = Project::new();
+    let check = |source: &str, expected: &str| {
+        project.write(".toolconfig.toml", source);
+        let error = project.fail(&["validate"]);
+        assert!(error.contains(expected), "{expected:?} in {error}");
+    };
+    check(
+        "root = true\n[toolconfig]\ntools = [\"vale\"]\n[toolconfig.vale]\nstyles = [\"STEE\"]\n",
+        "unknown vale style \"STEE\"; did you mean \"STE\"?",
+    );
+    check(
+        "root = true\n[toolconfig]\ntools = [\"ruff\"]\n[toolconfig.ruff]\nstyles = [\"STE\"]\n",
+        "unknown key \"styles\" in [toolconfig.ruff]; expected format, path or skip",
+    );
+    check(
+        "root = true\n[toolconfig]\ntools = [\"vale\"]\n[toolconfig.vale]\nlevel = 1\n",
+        "unknown key \"level\" in [toolconfig.vale]; expected format, path, skip, styles or vocabularies",
+    );
+    check(
+        "root = true\n[toolconfig]\ntools = [\"vale\"]\n[toolconfig.vale.vocabularies.Terms]\nreject = [\"# note\"]\n",
+        "vale vocabulary Terms reject entry \"# note\"",
+    );
+    check(
+        "root = true\n[toolconfig]\ntools = [\"vale\"]\n[toolconfig.vale]\nstyles = [\"STE\"]\n[\"*\".vale]\nStylesPath = \"../styles\"\n",
+        "vale.style.STE writes outside the project",
+    );
+    // Vale reads one INI file per run, so options for some files cannot go in it.
+    check(
+        "root = true\n[toolconfig]\ntools = [\"vale\"]\n[\"*.md\".vale]\nMinAlertLevel = \"error\"\n",
+        "cannot follow section \"*.md\"",
+    );
+}

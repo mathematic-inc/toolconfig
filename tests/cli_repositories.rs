@@ -845,3 +845,46 @@ sections {{ ["*.rs"] {{ max_line_length = fragments["local/width.pkl"].width }} 
         "watch mode regenerated in a loop"
     );
 }
+
+#[test]
+fn imported_vale_settings_merge_by_vocabulary_name() {
+    let fixture = Fixture::new();
+    fixture.write(
+        "source/.toolconfig.toml",
+        r#"[toolconfig]
+tools = ["vale"]
+[toolconfig.vale]
+styles = ["STE"]
+[toolconfig.vale.vocabularies.Shared]
+accept = ["shared"]
+[toolconfig.vale.vocabularies.Local]
+accept = ["from the profile"]
+["*".vale]
+Vocab = ["Shared", "Local"]
+"#,
+    );
+    let revision = fixture.commit();
+    fixture.configure(
+        &revision,
+        r#"[toolconfig.vale.vocabularies.Local]
+reject = ["from the project"]
+"#,
+    );
+    fixture.ok(&["generate"]);
+    assert_eq!(
+        fixture.read(".vale/styles/config/vocabularies/Shared/accept.txt"),
+        "shared\n"
+    );
+    // The project's vocabulary replaces the profile's of the same name.
+    assert!(
+        !fixture
+            .path("project/.vale/styles/config/vocabularies/Local/accept.txt")
+            .exists()
+    );
+    assert_eq!(
+        fixture.read(".vale/styles/config/vocabularies/Local/reject.txt"),
+        "from the project\n"
+    );
+    assert!(fixture.path("project/.vale/styles/STE/Ing.yml").exists());
+    assert!(fixture.read(".vale.ini").contains("Vocab = Shared, Local"));
+}

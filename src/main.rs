@@ -19,6 +19,7 @@ mod report;
 mod repository;
 mod schema;
 mod toml_source;
+mod vale;
 mod value;
 mod watch;
 

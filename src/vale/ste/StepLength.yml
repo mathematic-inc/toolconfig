@@ -1,0 +1,9 @@
+# A step is an item of a numbered list. A step has 20 words or fewer, counted as in SentenceLength.
+# Lint a commit subject or a pull request title as a numbered list item: "1. Add the label".
+extends: occurrence
+message: "The step has %d words. Use 20 words or fewer."
+link: https://github.com/mathematic-inc/toolconfig#the-ste-style
+level: warning
+scope: sentence & doc(ol > li)
+max: 20
+token: '\([^()]*\)|"[^"]*"|\S*\w\S*'

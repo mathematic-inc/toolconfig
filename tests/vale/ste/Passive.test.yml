@@ -1,0 +1,19 @@
+- name: reports a form of be with a participle
+  rule: Passive.yml
+  input: |
+    The job is started by the host. The label was removed. The jobs are not yet finished.
+    The key is held by the host. The file is written once.
+  contains:
+    - "'is started'"
+    - "'was removed'"
+    - "'are not yet finished'"
+    - "'is held'"
+    - "'is written'"
+- name: leaves an adjective alone
+  rule: Passive.yml
+  input: The door is open. The count is even. The value is often wrong. The label is red.
+  absent: STE.Passive
+- name: leaves the active voice alone
+  rule: Passive.yml
+  input: The host starts the job.
+  absent: STE.Passive

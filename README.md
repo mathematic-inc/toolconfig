@@ -289,7 +289,7 @@ the same properties leave them unchanged.
 | tombi | indent, width, line ending | `tombi.toml` |
 | typos | spelling language | `typos.toml` |
 | yamlfmt | indent, width, line ending | `.yamlfmt` |
-| actionlint, buf, cargo-deny, editorconfig-checker, gitleaks, hadolint, knip, lychee, oxlint, shellcheck, tflint, ty, typespec | native options only | their usual file |
+| actionlint, buf, cargo-deny, editorconfig-checker, gitleaks, hadolint, knip, lychee, oxlint, shellcheck, tflint, ty, typespec, vale | native options only | their usual file |
 
 shfmt and ktlint read `.editorconfig` themselves; write their keys in sections.
 
@@ -301,6 +301,93 @@ form: `["*.tf".tflint.plugin.aws]` becomes `plugin "aws" { ... }`. ToolConfig kn
 are blocks in tflint's own schema and its bundled terraform ruleset; for a plugin's nested block,
 such as `assume_role`, set `tflint.format = "json"` to write `.tflint.json`, which each plugin
 reads by its own schema.
+
+## Vale
+
+Vale reads `.vale.ini` and, beside it, a `StylesPath` folder of styles and vocabularies. ToolConfig
+writes the INI file from the `vale` table in `["*"]`, and the folder from `[toolconfig.vale]`:
+
+```toml
+[toolconfig]
+tools = ["vale"]
+
+[toolconfig.vale]
+styles = ["STE"]
+
+[toolconfig.vale.vocabularies.Terms]
+accept = ["(?i)staging", "RunnerRunner"]
+reject = ["(?i)utilize"]
+
+["*".vale]
+MinAlertLevel = "warning"
+Vocab = "Terms"
+
+["*".vale.formats]
+rs = "md"
+
+["*".vale."*.{md,rs}"]
+BasedOnStyles = ["Vale", "STE"]
+"Vale.Spelling" = "NO"
+```
+
+- Global keys go directly in the table. `StylesPath` is `.vale/styles` unless you set it.
+- A nested table is a section of the file, named by its glob. `["*".vale."*.md"]` writes `[*.md]`,
+  and `["*".vale.formats]` writes `[formats]`. Vale reads one INI file per run, so every option
+  goes in `["*"]`, as for shellcheck.
+- A list is one comma-separated entry. ToolConfig writes a comma inside an item as `\,`, which is
+  how Vale reads a comma in a pattern.
+- Quote a key that has a dot, as in `"Vale.Spelling" = "NO"`. TOML reads an unquoted dot as a
+  nested table.
+- `styles` lists the bundled styles to write under `StylesPath`. ToolConfig carries `STE`.
+- `vocabularies` writes `accept.txt` and `reject.txt` under `StylesPath/config/vocabularies/<name>`.
+  An entry is a regular expression, one per line, as Vale reads them. `Vocab` turns a vocabulary on.
+  A vocabulary of the same name in the importing source replaces an imported one.
+
+All of these files are generated files. Edit the source, not the files.
+
+### The STE style
+
+STE checks the part of Simplified Technical English that a linter can check. It needs Vale 3.21 or
+later, and it is tested with Vale 3.26. The check is not a check for compliance with ASD-STE100.
+ASD owns that specification and its dictionary. ToolConfig carries none of the dictionary: your
+vocabulary holds your own terms.
+
+| Rule | Level | Reports |
+| --- | --- | --- |
+| `STE.Semicolons` | error | A semicolon |
+| `STE.Contractions` | error | `don't`, `it's`, `we've`, and the others. A possessive is not a contraction |
+| `STE.LatinAbbreviations` | error | `e.g.`, `i.e.`, `etc.`, `et al.`, `cf.`, `viz.` and `vs.` |
+| `STE.PerfectTense` | error | `has stopped`, `had been` |
+| `STE.ProgressiveTense` | error | `is running`, `was being` |
+| `STE.Ing` | warning | An -ing word that the vocabulary does not accept |
+| `STE.Passive` | warning | A form of `be` and a past participle |
+| `STE.NounClusters` | warning | Four or more nouns, adjectives or participles in a row |
+| `STE.SentenceLength` | warning | A sentence of more than 25 words |
+| `STE.StepLength` | warning | An item of a numbered list of more than 20 words |
+
+- Enable the rules with `BasedOnStyles = ["Vale", "STE"]`. The built-in `Vale` style turns on
+  `Vale.Avoid`, which reports each `reject` entry as an error, and `Vale.Terms`, which reports an
+  `accept` entry that has the wrong case. Turn off `Vale.Spelling` and `Vale.Repetition` if a
+  spelling checker already runs.
+- An `accept` entry also stops every rule from reporting the words it matches. This is how a
+  technical noun with an -ing form, such as `(?i)staging`, passes `STE.Ing`.
+- A code span does not count: Vale takes it out of the sentence. Text in parentheses and in double
+  quotation marks counts as one word, and so does a hyphenated word. A heading is a label, so
+  `STE.SentenceLength` skips it.
+- A commit subject and a pull request title are instructions, with a limit of 20 words. Give
+  Vale one as a numbered list item: `printf '1. %s\n' "$subject" | vale --ext=.md`.
+- To lint the comments of a source file, tell Vale to read them as Markdown with `[formats]`, as in
+  the example. Vale reads comments in many languages, among them Rust, TypeScript, Go and Python.
+- Each rule is a pattern, so each has misses and false positives. The warnings have the most. Turn
+  a rule off for some files with `"STE.Passive" = "NO"`. In Markdown, turn it off for a passage with
+  Vale's own `<!-- vale STE.Passive = NO -->` and `<!-- vale STE.Passive = YES -->`. In a source file,
+  such a comment applies to the whole file.
+
+The style cannot check, and a person must read for: the approved words and the one meaning of each,
+the technical nouns and verbs, one topic in a paragraph and six sentences or fewer, one instruction
+in a sentence, a condition before its command, articles and other omitted words, the difference
+between a step and a description (outside a numbered list), phrasal verbs, a noun used as a verb,
+safety text, and notes. A passing check does not show that a text follows the specification.
 
 ## Commands
 
@@ -355,7 +442,8 @@ python tests/native/run.py --toolconfig target/debug/toolconfig
 ```
 
 The native suite runs rustfmt, ruff, prettier, oxfmt, tombi, yamllint, sqlfluff, golangci-lint,
-tflint and shellcheck against generated configuration; `mise install` provides them. After
+tflint, shellcheck and Vale against generated configuration; `mise install` provides them. For Vale
+it runs the cases in `tests/vale/ste` with `vale test --coverage`. After
 changing the catalog, refresh the schema with `cargo run -- schema > schema/toolconfig.schema.json`.
 Releases are described in [docs/releasing.md](docs/releasing.md).
 

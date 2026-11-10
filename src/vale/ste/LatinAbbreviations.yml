@@ -1,0 +1,9 @@
+# Write "for example", "that is" and "and so on" in full. A path such as /etc/hosts is not an abbreviation.
+extends: existence
+message: "Do not use the Latin abbreviation '%s'. Write the words in full."
+link: https://github.com/mathematic-inc/toolconfig#the-ste-style
+level: error
+ignorecase: true
+nonword: true
+raw:
+  - '(?<![\w/.-])(?:e\.g\.?|i\.e\.?|etc\b\.?|et\s+al\.|viz\.|cf\.|vs\.|n\.b\.)(?![\w/])'

@@ -15,8 +15,8 @@ can also follow it by hand. Ask your assistant:
 2. List which tools have native files. The supported tools are actionlint, buf, cargo-deny,
    csharpier, editorconfig-checker, gitleaks, golangci-lint, hadolint, knip, lychee, oxfmt,
    oxlint, prettier, ruff, rumdl, rustfmt, ryl, shellcheck, sqlfluff, tflint, tombi, ty,
-   typespec, typos, yamlfmt and yamllint. Leave files for other tools as they are; ToolConfig
-   does not touch them.
+   typespec, typos, vale, yamlfmt and yamllint. Leave files for other tools as they are;
+   ToolConfig does not touch them.
 
 ## 2. Convert `.editorconfig`
 

@@ -1,0 +1,15 @@
+---
+source: tests/cli.rs
+expression: "project.read(\".vale.ini\")"
+---
+StylesPath = .vale/styles
+MinAlertLevel = warning
+Vocab = Terms
+
+[formats]
+rs = md
+
+[*.{md,rs}]
+BasedOnStyles = Vale, STE
+Vale.Spelling = NO
+TokenIgnores = (x{2\,3}), (y)

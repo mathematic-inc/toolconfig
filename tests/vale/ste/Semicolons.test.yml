@@ -1,0 +1,12 @@
+- name: reports a semicolon
+  rule: Semicolons.yml
+  input: Stop the job; start the job.
+  contains: Do not use a semicolon
+- name: leaves two sentences alone
+  rule: Semicolons.yml
+  input: Stop the job. Start the job.
+  absent: STE.Semicolons
+- name: leaves a code span alone
+  rule: Semicolons.yml
+  input: Run `a; b` now.
+  absent: STE.Semicolons

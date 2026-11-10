@@ -1,0 +1,11 @@
+# Write both words of a contraction. Possessives such as "the runner's label" are not contractions.
+extends: existence
+message: "Do not use the contraction '%s'. Write both words."
+link: https://github.com/mathematic-inc/toolconfig#the-ste-style
+level: error
+ignorecase: true
+nonword: true
+raw:
+  - '\b\w+n[''’]t\b'
+  - '|\b(?:it|that|there|here|what|who|where|how|let)[''’]s\b'
+  - '|\b\w+[''’](?:re|ve|ll|d|m)\b'

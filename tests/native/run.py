@@ -100,6 +100,22 @@ def shellcheck(directory):
     assert codes == {"SC2250"}, f"shell, source-path, enable and disable:\n{result.stdout}"
 
 
+def vale(directory):
+    # The style's own cases, which `vale test` runs from the project: its rules alone, and its
+    # configuration and vocabulary. Every rule must report in at least one case.
+    styles = directory / ".vale" / "styles" / "STE"
+    cases = Path(__file__).resolve().parent.parent / "vale" / "ste"
+    for case in sorted(cases.glob("*.test.yml")):
+        shutil.copy(case, styles)
+    result = run(["vale", "test", "--coverage", str(styles)], directory, check=False)
+    output = result.stdout + result.stderr
+    assert result.returncode == 0, f"vale test --coverage:\n{output}"
+    (directory / "terms.md").write_text("We utilize the runner. Stop the building.\n")
+    result = run(["vale", "--output=line", "terms.md"], directory, check=False)
+    assert result.returncode == 1, f"a rejected term is an error:\n{result.stdout}{result.stderr}"
+    assert "Vale.Avoid" in result.stdout, f"reject.txt:\n{result.stdout}"
+
+
 CASES = {
     "rustfmt": ('["*.rs"]\nindent_size = 3\n', rustfmt),
     "ruff": ('["*.{py,pyi}"]\nindent_size = 2\n', ruff),
@@ -135,6 +151,18 @@ CASES = {
             'source-path = ["lib dir"]\nenable = ["require-variable-braces"]\ndisable = ["SC2034"]\n'
         ),
         shellcheck,
+    ),
+    "vale": (
+        (
+            '[toolconfig.vale]\nstyles = ["STE"]\n\n'
+            "[toolconfig.vale.vocabularies.Terms]\n"
+            'accept = ["(?i)staging", "RunnerRunner"]\nreject = ["(?i)utilize"]\n\n'
+            '["*".vale]\nMinAlertLevel = "warning"\nVocab = "Terms"\n\n'
+            '["*".vale.formats]\nrs = "md"\n\n'
+            '["*".vale."*.{md,rs}"]\nBasedOnStyles = ["Vale", "STE"]\n'
+            '"Vale.Spelling" = "NO"\n"Vale.Repetition" = "NO"\n"Vale.Terms" = "warning"\n'
+        ),
+        vale,
     ),
 }
 

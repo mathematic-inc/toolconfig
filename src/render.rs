@@ -284,6 +284,8 @@ fn plain_yaml(text: &str) -> bool {
         && !text.chars().any(|ch| ch.is_control())
 }
 
+/// INI with sections, as sqlfluff and Vale read it. A list is one entry whose items are separated
+/// by commas, with a comma inside an item written `\,`, as Vale reads its lists.
 fn render_ini(value: &serde_json::Value) -> Result<String> {
     fn scalar(value: &serde_json::Value) -> Result<String> {
         match value {
@@ -294,7 +296,24 @@ fn render_ini(value: &serde_json::Value) -> Result<String> {
                 Ok(value.clone())
             }
             serde_json::Value::Number(_) | serde_json::Value::Bool(_) => Ok(value.to_string()),
-            _ => bail!("INI entries must be strings, numbers, or booleans"),
+            serde_json::Value::Array(items) => {
+                if items.is_empty() {
+                    bail!("INI lists cannot be empty; leave the key out");
+                }
+                let items = items
+                    .iter()
+                    .map(|item| match item {
+                        serde_json::Value::String(_)
+                        | serde_json::Value::Number(_)
+                        | serde_json::Value::Bool(_) => {
+                            scalar(item).map(|item| item.replace(',', "\\,"))
+                        }
+                        _ => bail!("INI lists hold strings, numbers, or booleans"),
+                    })
+                    .collect::<Result<Vec<_>>>()?;
+                Ok(items.join(", "))
+            }
+            _ => bail!("INI entries must be strings, numbers, booleans, or lists of them"),
         }
     }
     fn entry(result: &mut String, key: &str, value: &serde_json::Value) -> Result<()> {
@@ -423,6 +442,34 @@ mod tests {
             render("ini", &value, &Style::default()).unwrap(),
             "[sqlfluff]\ndialect = postgres\nmax_line_length = 100\n\n[sqlfluff:indentation]\ntab_space_size = 4\n"
         );
+    }
+
+    #[test]
+    fn renders_ini_lists_and_top_level_keys() {
+        let value = Value::from_json(&serde_json::json!({
+            "StylesPath": ".vale/styles",
+            "Vocab": ["A", "B"],
+            "*.md": {
+                "BasedOnStyles": ["Vale", "STE"],
+                "TokenIgnores": ["(x{2,3})", "(y)"],
+                "STE.SentenceLength": "NO"
+            }
+        }));
+        assert_eq!(
+            render("ini", &value, &Style::default()).unwrap(),
+            "StylesPath = .vale/styles\nVocab = A, B\n\n[*.md]\nBasedOnStyles = Vale, STE\nTokenIgnores = (x{2\\,3}), (y)\nSTE.SentenceLength = NO\n"
+        );
+        for invalid in [
+            serde_json::json!({"a": []}),
+            serde_json::json!({"a": [["b"]]}),
+            serde_json::json!({"a": [{"b": 1}]}),
+            serde_json::json!({"a": [" b"]}),
+        ] {
+            assert!(
+                render("ini", &Value::from_json(&invalid), &Style::default()).is_err(),
+                "{invalid}"
+            );
+        }
     }
 
     #[test]
