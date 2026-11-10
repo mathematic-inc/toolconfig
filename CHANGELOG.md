@@ -7,7 +7,8 @@
 - Vale joins the catalog (`.vale.ini`). A style and a vocabulary are plain files. The README shows
   how a shared Pkl source writes them with `files`.
 - INI files take lists, as one comma-separated entry. ToolConfig writes a comma inside an item as
-  `\,`, which Vale's TokenIgnores and BlockIgnores read as a comma. sqlfluff splits at every comma.
+  `\,`, which Vale's TokenIgnores and BlockIgnores read as a comma. sqlfluff and Vale's other lists
+  split at every comma.
 
 ## 2026.11.2 (2026-11-08)
 

@@ -330,8 +330,8 @@ fn plain_yaml(text: &str) -> bool {
         && !text.chars().any(|ch| ch.is_control())
 }
 
-/// Vale's TokenIgnores and BlockIgnores read `\,` in a list item as a comma, and any other
-/// backslash inside an item as it is. sqlfluff and Vale's other lists split at every comma.
+/// Vale's TokenIgnores and BlockIgnores read `\,` in a list item as a comma, and every other
+/// backslash as it is. sqlfluff and Vale's other lists split at every comma.
 fn render_ini(value: &serde_json::Value) -> Result<String> {
     fn scalar(value: &serde_json::Value) -> Result<String> {
         match value {
@@ -344,7 +344,7 @@ fn render_ini(value: &serde_json::Value) -> Result<String> {
             serde_json::Value::Number(_) | serde_json::Value::Bool(_) => Ok(value.to_string()),
             serde_json::Value::Array(items) => {
                 if items.is_empty() {
-                    bail!("INI lists cannot be empty; leave the key out");
+                    bail!("INI lists cannot be empty\nhelp: remove the key");
                 }
                 Ok(items
                     .iter()
@@ -354,7 +354,7 @@ fn render_ini(value: &serde_json::Value) -> Result<String> {
                         | serde_json::Value::Bool(_) => {
                             scalar(item).map(|text| text.replace(',', "\\,"))
                         }
-                        _ => bail!("INI lists hold strings, numbers, or booleans"),
+                        _ => bail!("INI list items must be strings, numbers, or booleans"),
                     })
                     .collect::<Result<Vec<_>>>()?
                     .join(", "))
@@ -370,7 +370,8 @@ fn render_ini(value: &serde_json::Value) -> Result<String> {
         {
             bail!("invalid INI key {key:?}");
         }
-        result.push_str(&format!("{key} = {}\n", scalar(value)?));
+        let value = scalar(value).with_context(|| format!("INI key {key:?}"))?;
+        result.push_str(&format!("{key} = {value}\n"));
         Ok(())
     }
     let object = value

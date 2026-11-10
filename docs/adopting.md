@@ -43,7 +43,8 @@ For each native file:
    `["*".ruff]`, `["*".ruff.lint]`, `[["*".gitleaks.allowlists]]`. Options that only apply to
    some file types can go under that type's section, such as `["*.md".prettier]`. A
    `.tflint.hcl` moves in its JSON form: `rule "x" { enabled = false }` becomes
-   `["*.tf".tflint.rule.x]` with `enabled = false`.
+   `["*.tf".tflint.rule.x]` with `enabled = false`. A `.vale.ini` moves into `["*".vale]`, and
+   its `[*.md]` section becomes `["*".vale."*.md"]`.
 4. Formatting options become standard properties instead, in a section for the files the tool
    formats. Each pair below is one value:
 

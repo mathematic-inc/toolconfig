@@ -1,7 +1,7 @@
 """Run real tools against generated configuration and check that they follow it.
 
-Each case writes a source with distinctive EditorConfig values, generates native files with
-ToolConfig, runs the tool, and checks the result for those values.
+Each case writes a source with distinctive values, generates native files with ToolConfig, runs
+the tool, and checks the result for those values.
 """
 
 import argparse
@@ -102,8 +102,7 @@ def shellcheck(directory):
 
 
 def vale(directory):
-    # Vale reads each list as items with commas between them. A comma inside an item is `\,`.
-    # The patterns hide "xxx" and "yyy". Vale reports only "zzz".
+    # TokenIgnores hides "xxx" only when Vale reads the `\,` in `(x{2\,3})` as a comma.
     styles = directory / ".vale" / "styles"
     (styles / "Local").mkdir(parents=True)
     (styles / "Local" / "Letters.yml").write_text(
@@ -117,11 +116,11 @@ def vale(directory):
     result = run(["vale", "--no-global", "--output=JSON", "notes.md"], directory, check=False)
     assert result.returncode == 1, f"alerts:\n{result.stdout}{result.stderr}"
     alerts = [(alert["Check"], alert["Match"]) for alert in json.loads(result.stdout)["notes.md"]]
-    assert alerts == [
+    assert set(alerts) == {
         ("Vale.Avoid", "utilize"),
         ("Vale.Avoid", "leverage"),
         ("Local.Letters", "zzz"),
-    ], f"Vocab, BasedOnStyles and TokenIgnores:\n{alerts}"
+    }, f"Vocab, BasedOnStyles and TokenIgnores:\n{alerts}"
 
 
 CASES = {

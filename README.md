@@ -308,6 +308,8 @@ Vale reads `.vale.ini` and a `StylesPath` folder of styles and vocabularies. Too
 INI file from the `vale` table in `["*"]`:
 
 ```toml
+root = true
+
 [toolconfig]
 tools = ["vale"]
 
@@ -325,9 +327,11 @@ BasedOnStyles = ["Vale", "Acme"]
 ```
 
 - Core settings go directly in the table.
-- A nested table is a section of the file, named by its glob. `["*".vale."*.md"]` writes `[*.md]`,
-  and `["*".vale.formats]` writes `[formats]`. Vale reads one INI file per run, so every option
-  goes in `["*"]`, as for shellcheck.
+- A nested table is a section with the same name: `["*".vale."*.md"]` writes `[*.md]`, and
+  `["*".vale.formats]` writes `[formats]`.
+- `.vale.ini` applies to every file Vale checks, so every option goes in `["*"]`, as for
+  shellcheck. Vale reads the first `.vale.ini` from its working directory up, so enable vale in
+  one directory only.
 - A list is one comma-separated entry. ToolConfig writes a comma inside an item as `\,`, which is
   how Vale reads a comma in a pattern.
 - Quote a key that has a dot, as in `"Vale.Spelling" = "NO"`. TOML reads an unquoted dot as a
@@ -341,7 +345,7 @@ rule files of the `styles` folder and one vocabulary:
 toolconfig {
   files {
     for (uri, rule in read*("styles/*.yml")) {
-      [uri] {
+      [uri.split("/").last] {
         path = ".vale/styles/Acme/\(uri.split("/").last)"
         format = "text"
         config = rule.text
@@ -409,7 +413,7 @@ python tests/native/run.py --toolconfig target/debug/toolconfig
 ```
 
 The native suite runs rustfmt, ruff, prettier, oxfmt, tombi, yamllint, sqlfluff, golangci-lint,
-tflint, shellcheck and Vale against generated configuration; `mise install` provides them. After
+tflint, shellcheck and vale against generated configuration; `mise install` provides them. After
 changing the catalog, refresh the schema with `cargo run -- schema > schema/toolconfig.schema.json`.
 Releases are described in [docs/releasing.md](docs/releasing.md).
 
