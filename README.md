@@ -137,13 +137,13 @@ within a source.
     `dotnet_diagnostic.CA1822.severity = "warning"`, is written to `.editorconfig` as is.
 - Keep each section's tables together. Section order decides precedence, as in EditorConfig.
 
-Add `#:schema https://github.com/mathematic-inc/toolconfig/releases/download/v2026.11.2/toolconfig.schema.json`
+Add `#:schema https://github.com/mathematic-inc/toolconfig/releases/download/v2026.11.3/toolconfig.schema.json`
 at the top for completion in Taplo, Tombi and other TOML editors.
 
 ### Pkl sources
 
 ```pkl
-amends "package://github.com/mathematic-inc/toolconfig/releases/download/v2026.11.2/toolconfig@2026.11.2#/ToolConfig.pkl"
+amends "package://github.com/mathematic-inc/toolconfig/releases/download/v2026.11.3/toolconfig@2026.11.3#/ToolConfig.pkl"
 
 local width = 100
 

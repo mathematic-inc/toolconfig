@@ -1546,7 +1546,7 @@ checksum = "009dbb7700f11c55ef83aebbe4c0e9cf1f1ac0844bd8d6f00dc38f302026e13a"
 
 [[package]]
 name = "toolconfig"
-version = "2026.11.2"
+version = "2026.11.3"
 dependencies = [
  "anyhow",
  "base64",
