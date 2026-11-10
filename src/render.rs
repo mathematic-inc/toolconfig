@@ -74,9 +74,7 @@ pub(crate) fn native(
     }
 }
 
-/// Refuses values that Vale's INI reader changes. It ends a value at ` #` or ` ;`, removes the
-/// quotes or backticks around a value, and reads a backslash at the end of a value or list item
-/// as an escape.
+/// Refuses values that Vale's INI reader changes.
 fn vale_ini(value: &Value) -> Result<()> {
     for (path, leaf) in value.leaves() {
         let items = match leaf {
@@ -370,8 +368,8 @@ fn render_ini(value: &serde_json::Value) -> Result<String> {
         {
             bail!("invalid INI key {key:?}");
         }
-        let value = scalar(value).with_context(|| format!("INI key {key:?}"))?;
-        result.push_str(&format!("{key} = {value}\n"));
+        let text = scalar(value).with_context(|| format!("INI key {key:?}"))?;
+        result.push_str(&format!("{key} = {text}\n"));
         Ok(())
     }
     let object = value

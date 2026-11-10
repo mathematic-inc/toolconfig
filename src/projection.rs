@@ -657,7 +657,7 @@ impl Context<'_> {
             self.builtin.id,
             self.native_dir_source()
         );
-        // A tool that reads one file per run refuses a second source that lists it.
+        // ToolConfig refuses a second source for a tool that reads one file per run.
         match directory {
             Some(directory) if self.builtin.nearest && !directory.is_empty() => format!(
                 "add a source in {} that lists {} in tools, or {skip}",
