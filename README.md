@@ -126,7 +126,7 @@ within a source.
   | `<tool>.format` | One of the tool's native formats, such as `"yaml"` for prettier |
   | `<tool>.path` | One of the filenames the tool reads, such as `"_typos.toml"` |
   | `<tool>.skip` | Standard properties not projected into the tool; `["*"]` skips all |
-  | `files.<label>` | A custom output with `path`, `format` and `config` |
+  | `files.<label>` | A custom output with `path`, `format` and `config`. `format` is `json`, `yaml`, `toml`, `ini`, `text` (a string as it is) or `lines` (a list of strings, one on each line) |
 
 - **`["<glob>"]`** is an EditorConfig section. The quotes are required. Inside a section:
   - Standard properties (`indent_style`, `indent_size`, `tab_width`, `end_of_line`, `charset`,
@@ -355,10 +355,6 @@ toolconfig {
   }
 }
 ```
-
-`format = "text"` writes a string as it is. `format = "lines"` writes a list of strings, one on
-each line, which is how Vale reads `accept.txt` and `reject.txt`. As for `.vale.ini`, `check`
-reports an edit to these files, and `init --gitignore` lists them in the managed `.gitignore` block.
 
 ## Commands
 

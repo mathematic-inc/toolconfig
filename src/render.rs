@@ -331,7 +331,7 @@ fn plain_yaml(text: &str) -> bool {
 }
 
 /// Vale's TokenIgnores and BlockIgnores read `\,` in a list item as a comma, and any other
-/// backslash inside an item as it is.
+/// backslash inside an item as it is. sqlfluff and Vale's other lists split at every comma.
 fn render_ini(value: &serde_json::Value) -> Result<String> {
     fn scalar(value: &serde_json::Value) -> Result<String> {
         match value {
@@ -346,18 +346,18 @@ fn render_ini(value: &serde_json::Value) -> Result<String> {
                 if items.is_empty() {
                     bail!("INI lists cannot be empty; leave the key out");
                 }
-                let items = items
+                Ok(items
                     .iter()
                     .map(|item| match item {
                         serde_json::Value::String(_)
                         | serde_json::Value::Number(_)
                         | serde_json::Value::Bool(_) => {
-                            scalar(item).map(|item| item.replace(',', "\\,"))
+                            scalar(item).map(|text| text.replace(',', "\\,"))
                         }
                         _ => bail!("INI lists hold strings, numbers, or booleans"),
                     })
-                    .collect::<Result<Vec<_>>>()?;
-                Ok(items.join(", "))
+                    .collect::<Result<Vec<_>>>()?
+                    .join(", "))
             }
             _ => bail!("INI entries must be strings, numbers, booleans, or lists of them"),
         }
