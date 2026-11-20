@@ -1,5 +1,6 @@
 #:schema ../../schema/toolconfig.schema.json
 # Shared settings. Each package lists the tools it uses in its own source and inherits these.
+
 root = true
 
 [toolconfig]
