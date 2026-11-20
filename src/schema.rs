@@ -12,6 +12,46 @@ pub(crate) fn url() -> String {
 }
 
 pub(crate) fn generate() -> Value {
+    let mut settings = source_settings();
+    let mut section = serde_json::Map::new();
+    for (key, schema) in standard() {
+        section.insert(key.into(), schema);
+    }
+    for builtin in catalog::all() {
+        settings.insert(builtin.id.clone(), tool_settings(builtin));
+        section.insert(
+            builtin.id.clone(),
+            json!({
+                "description": format!("Native {} options for the files this section matches.", builtin.id),
+                "type": "object"
+            }),
+        );
+    }
+    json!({
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "$id": url(),
+        "title": "ToolConfig source",
+        "description": "EditorConfig sections in TOML, with native options for each tool. ToolConfig generates .editorconfig and each tool's configuration file from it.",
+        "type": "object",
+        "properties": {
+            "root": {
+                "description": "Stops the EditorConfig cascade at this directory. The project's top source must set it.",
+                "type": "boolean"
+            },
+            "toolconfig": {
+                "description": "Settings for the files generated in this directory.",
+                "type": "object",
+                "properties": settings,
+                "additionalProperties": false
+            }
+        },
+        "additionalProperties": { "$ref": "#/definitions/section" },
+        "definitions": definitions(&section)
+    })
+}
+
+/// The `[toolconfig]` keys that do not belong to one tool.
+fn source_settings() -> serde_json::Map<String, Value> {
     let ids = catalog::all()
         .iter()
         .map(|builtin| builtin.id.clone())
@@ -48,87 +88,59 @@ pub(crate) fn generate() -> Value {
             "additionalProperties": { "$ref": "#/definitions/file" }
         }),
     );
-    let mut section = serde_json::Map::new();
-    for (key, schema) in standard() {
-        section.insert(key.into(), schema);
-    }
-    for builtin in catalog::all() {
-        settings.insert(
-            builtin.id.clone(),
-            json!({
-                "description": format!("How {} is generated.", builtin.id),
-                "type": "object",
-                "properties": {
-                    "format": {
-                        "description": "The native format to write.",
-                        "enum": builtin.formats.keys().collect::<Vec<_>>()
-                    },
-                    "path": {
-                        "description": "The native filename to write, among those the tool reads.",
-                        "enum": builtin.alternatives
-                    },
-                    "skip": {
-                        "description": "Standard properties not projected into this tool; \"*\" skips all.",
-                        "type": "array",
-                        "items": { "enum": std::iter::once("*").chain(crate::model::STANDARD).collect::<Vec<_>>() },
-                        "uniqueItems": true
-                    }
-                },
-                "additionalProperties": false
-            }),
-        );
-        section.insert(
-            builtin.id.clone(),
-            json!({
-                "description": format!("Native {} options for the files this section matches.", builtin.id),
-                "type": "object"
-            }),
-        );
-    }
+    settings
+}
+
+/// The `[toolconfig.<tool>]` settings of one tool.
+fn tool_settings(builtin: &catalog::Builtin) -> Value {
     json!({
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "$id": url(),
-        "title": "ToolConfig source",
-        "description": "EditorConfig sections in TOML, with native options for each tool. ToolConfig generates .editorconfig and each tool's configuration file from it.",
+        "description": format!("How {} is generated.", builtin.id),
         "type": "object",
         "properties": {
-            "root": {
-                "description": "Stops the EditorConfig cascade at this directory. The project's top source must set it.",
-                "type": "boolean"
+            "format": {
+                "description": "The native format to write.",
+                "enum": builtin.formats.keys().collect::<Vec<_>>()
             },
-            "toolconfig": {
-                "description": "Settings for the files generated in this directory.",
-                "type": "object",
-                "properties": settings,
-                "additionalProperties": false
+            "path": {
+                "description": "The native filename to write, among those the tool reads.",
+                "enum": builtin.alternatives
+            },
+            "skip": {
+                "description": "Standard properties not projected into this tool; \"*\" skips all.",
+                "type": "array",
+                "items": { "enum": std::iter::once("*").chain(crate::model::STANDARD).collect::<Vec<_>>() },
+                "uniqueItems": true
             }
         },
-        "additionalProperties": { "$ref": "#/definitions/section" },
-        "definitions": {
-            "section": {
-                "description": "An EditorConfig section. The key is a glob; later sections take precedence.",
-                "type": "object",
-                "properties": section,
-                "additionalProperties": { "$ref": "#/definitions/property" }
+        "additionalProperties": false
+    })
+}
+
+fn definitions(section: &serde_json::Map<String, Value>) -> Value {
+    json!({
+        "section": {
+            "description": "An EditorConfig section. The key is a glob; later sections take precedence.",
+            "type": "object",
+            "properties": section,
+            "additionalProperties": { "$ref": "#/definitions/property" }
+        },
+        "property": {
+            "description": "An EditorConfig property that other tools read, written to .editorconfig as is.",
+            "anyOf": [
+                { "type": ["string", "integer", "number", "boolean"] },
+                { "type": "object", "additionalProperties": { "$ref": "#/definitions/property" } }
+            ]
+        },
+        "file": {
+            "type": "object",
+            "properties": {
+                "path": { "description": "Path relative to this directory.", "type": "string" },
+                "format": { "enum": ["json", "yaml", "toml", "ini", "text", "lines"] },
+                "config": { "description": "The file's content: a table, a string for text, or an array of strings for lines." },
+                "committed": { "description": "Whether the file is committed. The managed .gitignore block does not list a committed file.", "type": "boolean" }
             },
-            "property": {
-                "description": "An EditorConfig property that other tools read, written to .editorconfig as is.",
-                "anyOf": [
-                    { "type": ["string", "integer", "number", "boolean"] },
-                    { "type": "object", "additionalProperties": { "$ref": "#/definitions/property" } }
-                ]
-            },
-            "file": {
-                "type": "object",
-                "properties": {
-                    "path": { "description": "Path relative to this directory.", "type": "string" },
-                    "format": { "enum": ["json", "yaml", "toml", "ini", "text", "lines"] },
-                    "config": { "description": "The file's content: a table, a string for text, or an array of strings for lines." },
-                    "committed": { "description": "Whether the file is committed. The managed .gitignore block does not list a committed file.", "type": "boolean" }
-                },
-                "required": ["path"],
-                "additionalProperties": false
-            }
+            "required": ["path"],
+            "additionalProperties": false
         }
     })
 }

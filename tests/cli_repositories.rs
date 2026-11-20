@@ -212,7 +212,7 @@ fn cached_commit_does_not_fetch_again_and_clean_needs_no_remote() {
     let state = fixture.read(".toolconfig.lock");
     fs::remove_dir_all(fixture.path("source")).unwrap();
     assert_success(
-        fixture
+        &fixture
             .command(&["generate"])
             .env("PATH", fixture.path("no-executables"))
             .output()
@@ -482,7 +482,7 @@ fn concurrent_projects_share_one_complete_snapshot() {
         .unwrap();
     let first = first.wait_with_output().unwrap();
     for output in [first, second] {
-        assert_success(output);
+        assert_success(&output);
     }
     assert_eq!(
         fixture.read("rustfmt.toml"),
@@ -490,7 +490,7 @@ fn concurrent_projects_share_one_complete_snapshot() {
     );
 }
 
-fn assert_success(output: Output) {
+fn assert_success(output: &Output) {
     assert!(
         output.status.success(),
         "{}",
@@ -584,7 +584,7 @@ fn ssh_imports_use_the_configured_git_ssh_command() {
             .env("GIT_SSH_VARIANT", "ssh")
             .output()
             .unwrap();
-        assert_success(output);
+        assert_success(&output);
     }
     assert!(fixture.path("ssh-used").exists());
 }
@@ -594,7 +594,7 @@ fn older_pkl_schema_defaults_remain_compatible() {
     let fixture = Fixture::new();
     fixture.write(
         "project/legacy.pkl",
-        r#"module legacy
+        r"module legacy
 root: Boolean = false
 toolconfig: Settings = new {}
 sections: Mapping<String, Dynamic> = new {}
@@ -608,7 +608,7 @@ class ToolSettings {
   path: String?
   skip: List<String> = List()
 }
-"#,
+",
     );
     fixture.write("project/.toolconfig.pkl", "amends \"legacy.pkl\"\nroot = true\ntoolconfig { tools = List(\"rustfmt\") }\nsections { [\"*.rs\"] { indent_size = 4 } }\n");
     fixture.ok(&["generate"]);

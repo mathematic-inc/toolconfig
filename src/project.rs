@@ -22,7 +22,7 @@ impl Project {
         self.sources.iter().find(|source| source.dir == dir)
     }
 
-    /// Sources that apply to `path`, outermost first, as EditorConfig applies them.
+    /// Sources that apply to `path`, outermost first, as `EditorConfig` applies them.
     pub(crate) fn chain(&self, path: &Path) -> Vec<&Source> {
         let mut chain = Vec::new();
         for ancestor in path.ancestors().skip(1) {

@@ -91,16 +91,15 @@ fn validate_url(url: &str) -> Result<()> {
     {
         bail!("git must be an HTTPS or SSH repository URL without embedded credentials");
     }
-    let valid = if let Some(rest) = url.strip_prefix("https://") {
-        rest.split_once('/')
-            .is_some_and(|(host, path)| !host.is_empty() && !host.contains('@') && !path.is_empty())
-    } else if let Some(rest) = url.strip_prefix("ssh://") {
-        rest.split_once('/').is_some_and(|(authority, path)| {
+    let valid = match url.split_once("://") {
+        Some(("https", rest)) => rest.split_once('/').is_some_and(|(host, path)| {
+            !host.is_empty() && !host.contains('@') && !path.is_empty()
+        }),
+        Some(("ssh", rest)) => rest.split_once('/').is_some_and(|(authority, path)| {
             let (user, host) = authority.rsplit_once('@').unwrap_or(("", authority));
             !host.is_empty() && !user.contains([':', '@']) && !path.is_empty()
-        })
-    } else {
-        url.split_once(':').is_some_and(|(authority, path)| {
+        }),
+        _ => url.split_once(':').is_some_and(|(authority, path)| {
             !authority.is_empty()
                 && !authority.starts_with('-')
                 && !authority.contains('/')
@@ -110,7 +109,7 @@ fn validate_url(url: &str) -> Result<()> {
                 && authority.split_once('@').is_some_and(|(user, host)| {
                     !user.is_empty() && !host.is_empty() && !host.contains('@')
                 })
-        })
+        }),
     };
     if !valid {
         bail!("git must be an HTTPS or SSH repository URL without embedded credentials");

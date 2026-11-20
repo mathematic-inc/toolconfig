@@ -18,7 +18,7 @@ pub(crate) const SOURCE_NAMES: [&str; 4] = [
     ".toolconfig.pkl",
 ];
 
-/// Standard EditorConfig properties. They are typed, written to `.editorconfig` and projected.
+/// Standard `EditorConfig` properties. They are typed, written to `.editorconfig` and projected.
 pub(crate) const STANDARD: [&str; 9] = [
     "indent_style",
     "indent_size",
@@ -307,7 +307,7 @@ pub(crate) fn check_standard(key: &str, value: &Value) -> Result<()> {
     Ok(())
 }
 
-/// The bare spelling EditorConfig uses for a property value.
+/// The bare spelling `EditorConfig` uses for a property value.
 pub(crate) fn render_scalar(value: &Value) -> Result<String> {
     let text = match value {
         Value::Bool(value) => value.to_string(),
@@ -320,14 +320,12 @@ pub(crate) fn render_scalar(value: &Value) -> Result<String> {
         ),
     };
     if text.contains(['\n', '\r', '\0']) || text.trim() != text {
-        bail!(
-            "EditorConfig values cannot contain line breaks or surrounding whitespace: {:?}",
-            text
-        );
+        bail!("EditorConfig values cannot contain line breaks or surrounding whitespace: {text:?}");
     }
     Ok(text)
 }
 
+#[derive(Clone, Copy)]
 enum Validation {
     Declaration,
     Resolved,
@@ -490,8 +488,7 @@ pub(crate) fn suggestion<'a>(name: &str, candidates: impl Iterator<Item = &'a st
         .map(|candidate| (distance(name, candidate), candidate))
         .filter(|(distance, _)| *distance <= 2)
         .min()
-        .map(|(_, candidate)| format!("; did you mean {candidate:?}?"))
-        .unwrap_or_default()
+        .map_or_default(|(_, candidate)| format!("; did you mean {candidate:?}?"))
 }
 
 #[cfg(test)]

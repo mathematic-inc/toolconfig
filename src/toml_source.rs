@@ -17,8 +17,7 @@ pub(crate) fn parse(path: &Path, text: &str) -> Result<Source> {
     let document = toml_edit::Document::parse(text).map_err(|error| {
         let location = error
             .span()
-            .map(|span| format!(":{}", line_of(text, span.start)))
-            .unwrap_or_default();
+            .map_or_default(|span| format!(":{}", line_of(text, span.start)));
         anyhow::anyhow!(
             "{}{location}: {}",
             path.display(),
@@ -36,7 +35,7 @@ pub(crate) fn parse(path: &Path, text: &str) -> Result<Source> {
     };
     let root = document.as_table();
     let mut sections = Vec::new();
-    for (key, item) in root.iter() {
+    for (key, item) in root {
         let key_repr = root.key(key);
         let origin = lines.origin(key_repr.and_then(toml_edit::Key::span));
         match key {
@@ -96,10 +95,8 @@ impl Lines<'_> {
 
 fn line_of(text: &str, offset: usize) -> usize {
     text.as_bytes()[..offset.min(text.len())]
-        .iter()
-        .filter(|byte| **byte == b'\n')
+        .split(|byte| *byte == b'\n')
         .count()
-        + 1
 }
 
 /// Whether a key was written quoted. Parsed keys carry spans into the source text.
@@ -110,6 +107,7 @@ fn quoted(text: &str, key: Option<&toml_edit::Key>) -> bool {
 }
 
 /// A view over either a `[table]` or an `{ inline = "table" }`.
+#[derive(Clone, Copy)]
 enum TableLike<'a> {
     Table(&'a Table),
     Inline(&'a toml_edit::InlineTable),
@@ -137,7 +135,7 @@ enum Entry<'a> {
 }
 
 impl<'a> Entry<'a> {
-    fn table_like(self) -> Option<TableLike<'a>> {
+    const fn table_like(self) -> Option<TableLike<'a>> {
         match self {
             Self::Item(item) => table_like(item),
             Self::Value(toml_edit::Value::InlineTable(table)) => Some(TableLike::Inline(table)),
@@ -152,7 +150,7 @@ impl<'a> Entry<'a> {
     }
 }
 
-fn table_like(item: &Item) -> Option<TableLike<'_>> {
+const fn table_like(item: &Item) -> Option<TableLike<'_>> {
     match item {
         Item::Table(table) => Some(TableLike::Table(table)),
         Item::Value(toml_edit::Value::InlineTable(table)) => Some(TableLike::Inline(table)),
@@ -170,16 +168,16 @@ fn collect_headers(item: &Item, headers: &mut Vec<usize>) {
             {
                 headers.push(span.start);
             }
-            for (_, item) in table.iter() {
+            for (_, item) in table {
                 collect_headers(item, headers);
             }
         }
         Item::ArrayOfTables(array) => {
-            for table in array.iter() {
+            for table in array {
                 if let Some(span) = table.span() {
                     headers.push(span.start);
                 }
-                for (_, item) in table.iter() {
+                for (_, item) in table {
                     collect_headers(item, headers);
                 }
             }
@@ -231,7 +229,7 @@ fn settings(lines: &Lines<'_>, table: TableLike<'_>) -> Result<Settings> {
                     bail!("{origin}: tools must be an array of tool names");
                 };
                 let mut tools = Vec::new();
-                for value in array.iter() {
+                for value in array {
                     let id = value
                         .as_str()
                         .with_context(|| format!("{origin}: tools must contain only tool names"))?;
@@ -422,7 +420,7 @@ fn convert(
     match entry {
         Entry::Item(Item::ArrayOfTables(array)) => {
             let mut values = Vec::new();
-            for table in array.iter() {
+            for table in array {
                 values.push(convert(
                     lines,
                     Entry::Item(&Item::Table(table.clone())),

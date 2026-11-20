@@ -1,6 +1,7 @@
 //! Files and directories a compilation read, so watch mode and publication can detect changes.
 
 use std::collections::{BTreeMap, BTreeSet};
+use std::fmt::Write as _;
 use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result};
@@ -103,7 +104,7 @@ impl Inputs {
         }
     }
 
-    pub(crate) fn extend(&mut self, other: Inputs) {
+    pub(crate) fn extend(&mut self, other: Self) {
         self.files.extend(other.files);
         self.directories.extend(other.directories);
         self.globs.extend(other.globs);
@@ -112,7 +113,7 @@ impl Inputs {
     }
 }
 
-/// With TOOLCONFIG_WATCH_TRACE set, reports why watch mode regenerates.
+/// With `TOOLCONFIG_WATCH_TRACE` set, reports why watch mode regenerates.
 pub(crate) fn trace(message: std::fmt::Arguments<'_>) {
     if std::env::var_os("TOOLCONFIG_WATCH_TRACE").is_some() {
         eprintln!("toolconfig: trace: {message}");
@@ -143,6 +144,8 @@ pub(crate) fn fingerprint(path: &Path) -> Result<String> {
 pub(crate) fn digest(bytes: &[u8]) -> String {
     Sha256::digest(bytes)
         .iter()
-        .map(|byte| format!("{byte:02x}"))
-        .collect()
+        .fold(String::new(), |mut digits, byte| {
+            let _ = write!(digits, "{byte:02x}");
+            digits
+        })
 }

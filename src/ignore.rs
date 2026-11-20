@@ -52,24 +52,21 @@ pub(crate) fn update(root: &Path, paths: &[PathBuf], original: Option<&[u8]>) ->
     }
     managed.push_str(END);
     managed.push_str(newline);
-    let output = match block(text)? {
-        Some((start, end)) => {
-            let mut output = text[..start].to_owned();
-            output.push_str(&managed);
-            output.push_str(&text[end..]);
-            output
+    let output = if let Some((start, end)) = block(text)? {
+        let mut output = text[..start].to_owned();
+        output.push_str(&managed);
+        output.push_str(&text[end..]);
+        output
+    } else {
+        let mut output = text.to_owned();
+        if !output.is_empty() && !output.ends_with('\n') {
+            output.push_str(newline);
         }
-        None => {
-            let mut output = text.to_owned();
-            if !output.is_empty() && !output.ends_with('\n') {
-                output.push_str(newline);
-            }
-            if !output.is_empty() && !output.ends_with(&format!("{newline}{newline}")) {
-                output.push_str(newline);
-            }
-            output.push_str(&managed);
-            output
+        if !output.is_empty() && !output.ends_with(&format!("{newline}{newline}")) {
+            output.push_str(newline);
         }
+        output.push_str(&managed);
+        output
     };
     Ok(output.into_bytes())
 }

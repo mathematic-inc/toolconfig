@@ -43,8 +43,8 @@ pub(crate) fn run(root: &Path) -> Result<()> {
     })
     .context("cannot start the filesystem watcher")?;
     let mut inputs = Inputs::default();
-    let mut watched = BTreeMap::new();
-    update_watches(&mut watcher, &mut watched, root, &inputs)?;
+    let mut registered = BTreeMap::new();
+    update_watches(&mut watcher, &mut registered, root, &inputs)?;
     let mut outputs = Vec::new();
     let mut compiling = false;
     let mut deadline = Some(Instant::now());
@@ -87,9 +87,9 @@ pub(crate) fn run(root: &Path) -> Result<()> {
                 inputs = compilation.inputs;
                 // Attach newly discovered dependencies before announcing publication.
                 // A fingerprint check closes the evaluation-to-watch registration gap.
-                update_watches(&mut watcher, &mut watched, root, &inputs)?;
+                update_watches(&mut watcher, &mut registered, root, &inputs)?;
                 if deadline.is_some() || inputs.changed() {
-                    deadline.get_or_insert(Instant::now() + SAVE_DEBOUNCE);
+                    deadline.get_or_insert_with(|| Instant::now() + SAVE_DEBOUNCE);
                     continue;
                 }
                 let result = compilation.result.and_then(|plan| {
@@ -124,10 +124,7 @@ fn start_compilation(root: PathBuf, sender: mpsc::Sender<Event>) -> Result<()> {
         .name("toolconfig-compiler".into())
         .spawn(move || {
             let (result, inputs) = compiler::build(&root);
-            let inputs = match &result {
-                Ok(plan) => plan.inputs.clone(),
-                Err(_) => inputs,
-            };
+            let inputs = result.as_ref().map_or(inputs, |plan| plan.inputs.clone());
             let _ = sender.send(Event::Compiled(Box::new(Compilation { inputs, result })));
         })
         .context("cannot start the compiler")?;
@@ -136,7 +133,7 @@ fn start_compilation(root: PathBuf, sender: mpsc::Sender<Event>) -> Result<()> {
 
 fn update_watches(
     watcher: &mut RecommendedWatcher,
-    watched: &mut BTreeMap<PathBuf, RecursiveMode>,
+    registered: &mut BTreeMap<PathBuf, RecursiveMode>,
     root: &Path,
     inputs: &Inputs,
 ) -> Result<()> {
@@ -175,17 +172,17 @@ fn update_watches(
             .any(|parent| path != parent && path.starts_with(parent))
     });
     for (directory, mode) in &desired {
-        if watched.get(directory) == Some(mode) {
+        if registered.get(directory) == Some(mode) {
             continue;
         }
-        if watched.contains_key(directory) {
+        if registered.contains_key(directory) {
             watcher.unwatch(directory)?;
         }
         watcher
             .watch(directory, *mode)
             .with_context(|| format!("cannot watch {}", directory.display()))?;
     }
-    for directory in watched
+    for directory in registered
         .keys()
         .filter(|directory| !desired.contains_key(*directory))
     {
@@ -193,7 +190,7 @@ fn update_watches(
             .unwatch(directory)
             .with_context(|| format!("cannot stop watching {}", directory.display()))?;
     }
-    *watched = desired;
+    *registered = desired;
     Ok(())
 }
 
@@ -219,8 +216,7 @@ fn relevant(event: &notify::Event, root: &Path, inputs: &Inputs, outputs: &[Path
     let relevant = event.paths.iter().find(|path| {
         let name = path
             .file_name()
-            .map(|name| name.to_string_lossy().into_owned())
-            .unwrap_or_default();
+            .map_or_default(|name| name.to_string_lossy().into_owned());
         if inputs.ignores_events(path)
             || **path == root.join(crate::paths::LOCKFILE)
             || path.starts_with(root.join(crate::paths::LEGACY_STATE_DIR))

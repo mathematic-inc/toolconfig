@@ -1,4 +1,4 @@
-//! EditorConfig, extended to your tools: generate `.editorconfig` and native tool configuration
+//! `EditorConfig`, extended to your tools: generate `.editorconfig` and native tool configuration
 //! from TOML or Pkl sources.
 
 mod cascade;

@@ -70,8 +70,17 @@ zip = { version = "9.4.1", default-features = false, features = ["deflate"] }
 [target."cfg(windows)".dependencies]
 windows-sys = { version = "0.61.2", features = ["Win32_Foundation", "Win32_Storage_FileSystem"] }
 
+[lints.clippy]
+all = { level = "deny", priority = -1 }
+nursery = { level = "deny", priority = -1 }
+pedantic = { level = "deny", priority = -1 }
+redundant_pub_crate = "allow"
+
 [lints.rust]
-unreachable_pub = "warn"
+missing_debug_implementations = "deny"
+missing_docs = "deny"
+rust_2018_idioms = { level = "deny", priority = -1 }
+unreachable_pub = "deny"
 
 [profile.release]
 strip = "debuginfo"

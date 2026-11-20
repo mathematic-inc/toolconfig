@@ -3,13 +3,14 @@
 mod hcl;
 
 use anyhow::{Context, Result, bail};
+use std::fmt::Write as _;
 
 use crate::catalog::Builtin;
 use crate::model::{self, STANDARD, Source};
 use crate::project::GENERATED_HEADER;
 use crate::value::{Value, display_path};
 
-/// Layout for generated files, taken from the EditorConfig properties at the file's own path,
+/// Layout for generated files, taken from the `EditorConfig` properties at the file's own path,
 /// so formatters that read the same properties leave the file unchanged.
 #[derive(Clone, Debug)]
 pub(crate) struct Style {
@@ -214,7 +215,6 @@ fn json(
             if scalars && column + inline.len() + 3 <= style.width {
                 text.push('[');
                 text.push_str(&inline);
-                text.push(']');
             } else {
                 text.push_str("[\n");
                 for (index, value) in values.iter().enumerate() {
@@ -226,8 +226,8 @@ fn json(
                     text.push('\n');
                 }
                 text.push_str(&style.pad(depth));
-                text.push(']');
             }
+            text.push(']');
         }
         scalar => text.push_str(&serde_json::to_string(scalar)?),
     }
@@ -247,14 +247,14 @@ fn yaml_mapping(
         let key = yaml_scalar(&serde_json::Value::String(key.clone()))?;
         match value {
             serde_json::Value::Object(fields) if !fields.is_empty() => {
-                text.push_str(&format!("{pad}{key}:\n"));
+                writeln!(text, "{pad}{key}:")?;
                 yaml_mapping(fields, indent + step, style, text)?;
             }
             serde_json::Value::Array(values) if !values.is_empty() => {
-                text.push_str(&format!("{pad}{key}:\n"));
+                writeln!(text, "{pad}{key}:")?;
                 yaml_sequence(values, indent + step, style, text)?;
             }
-            value => text.push_str(&format!("{pad}{key}: {}\n", yaml_scalar(value)?)),
+            value => writeln!(text, "{pad}{key}: {}", yaml_scalar(value)?)?,
         }
     }
     Ok(())
@@ -280,10 +280,10 @@ fn yaml_sequence(
                 text.push_str(&item[indent + 2..]);
             }
             serde_json::Value::Array(values) if !values.is_empty() => {
-                text.push_str(&format!("{pad}-\n"));
+                writeln!(text, "{pad}-")?;
                 yaml_sequence(values, indent + step, style, text)?;
             }
-            value => text.push_str(&format!("{pad}- {}\n", yaml_scalar(value)?)),
+            value => writeln!(text, "{pad}- {}", yaml_scalar(value)?)?,
         }
     }
     Ok(())
@@ -325,10 +325,10 @@ fn plain_yaml(text: &str) -> bool {
         && !text.ends_with(':')
         && !text.contains(": ")
         && !text.contains(" #")
-        && !text.chars().any(|ch| ch.is_control())
+        && !text.chars().any(char::is_control)
 }
 
-/// Vale's TokenIgnores and BlockIgnores read `\,` in a list item as a comma, and every other
+/// Vale's `TokenIgnores` and `BlockIgnores` read `\,` in a list item as a comma, and every other
 /// backslash as it is. sqlfluff and Vale's other lists split at every comma.
 fn render_ini(value: &serde_json::Value) -> Result<String> {
     fn scalar(value: &serde_json::Value) -> Result<String> {
@@ -369,7 +369,7 @@ fn render_ini(value: &serde_json::Value) -> Result<String> {
             bail!("invalid INI key {key:?}");
         }
         let text = scalar(value).with_context(|| format!("INI key {key:?}"))?;
-        result.push_str(&format!("{key} = {text}\n"));
+        writeln!(result, "{key} = {text}")?;
         Ok(())
     }
     let object = value
@@ -386,7 +386,7 @@ fn render_ini(value: &serde_json::Value) -> Result<String> {
         if !result.is_empty() {
             result.push('\n');
         }
-        result.push_str(&format!("[{section}]\n"));
+        writeln!(result, "[{section}]")?;
         for (key, value) in value.as_object().context("INI section must be an object")? {
             entry(&mut result, key, value)?;
         }
@@ -394,7 +394,7 @@ fn render_ini(value: &serde_json::Value) -> Result<String> {
     Ok(result)
 }
 
-/// ShellCheck's rc file: a `key=value` directive per line. An array repeats its key, as
+/// `ShellCheck`'s rc file: a `key=value` directive per line. An array repeats its key, as
 /// directives such as `enable` and `source-path` accumulate.
 fn shellcheckrc(value: &Value) -> Result<String> {
     let Value::Object(fields) = value else {
@@ -410,7 +410,7 @@ fn shellcheckrc(value: &Value) -> Result<String> {
             value => std::slice::from_ref(value),
         };
         for value in values {
-            text.push_str(&format!("{key}={}\n", directive(key, value)?));
+            writeln!(text, "{key}={}", directive(key, value)?)?;
         }
     }
     Ok(text)
@@ -444,8 +444,7 @@ pub(crate) fn editorconfig(source: &Source) -> Result<Option<String>> {
     let name = source
         .path
         .file_name()
-        .map(|name| name.to_string_lossy().into_owned())
-        .unwrap_or_default();
+        .map_or_default(|name| name.to_string_lossy().into_owned());
     let mut text = format!("{GENERATED_HEADER}{name}. Edit that file instead.\n");
     if source.root {
         text.push_str("root = true\n");
@@ -456,7 +455,7 @@ pub(crate) fn editorconfig(source: &Source) -> Result<Option<String>> {
             continue;
         }
         sections += 1;
-        text.push_str(&format!("\n[{}]\n", section.glob));
+        writeln!(text, "\n[{}]", section.glob)?;
         for property in &section.properties {
             let lower = property.key.to_ascii_lowercase();
             let key = if STANDARD.contains(&lower.as_str()) {
@@ -464,10 +463,7 @@ pub(crate) fn editorconfig(source: &Source) -> Result<Option<String>> {
             } else {
                 property.key.clone()
             };
-            text.push_str(&format!(
-                "{key} = {}\n",
-                model::render_scalar(&property.value)?
-            ));
+            writeln!(text, "{key} = {}", model::render_scalar(&property.value)?)?;
         }
     }
     Ok((source.root || sections > 0).then_some(text))
@@ -518,7 +514,7 @@ mod tests {
 
     #[test]
     fn refuses_values_that_vale_reads_differently() {
-        let vale = crate::catalog::get("vale").unwrap();
+        let builtin = crate::catalog::get("vale").unwrap();
         for invalid in [
             serde_json::json!({"a": "x #y"}),
             serde_json::json!({"*.md": {"a": ["x", ";y"]}}),
@@ -528,7 +524,7 @@ mod tests {
         ] {
             let value = Value::from_json(&invalid);
             assert!(
-                native(vale, "ini", &value, &Style::default()).is_err(),
+                native(builtin, "ini", &value, &Style::default()).is_err(),
                 "{invalid}"
             );
             // Other INI readers, such as sqlfluff, read these values as written.

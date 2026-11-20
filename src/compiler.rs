@@ -6,6 +6,7 @@ use std::path::{Path, PathBuf};
 use anyhow::{Context, Result, bail};
 
 use crate::inputs::Inputs;
+use crate::model::{FileSpec, Source};
 use crate::paths::{self, absolute};
 use crate::project::Project;
 use crate::projection::{self, Explained};
@@ -67,69 +68,108 @@ pub(crate) fn compile(project: &Project, mut inputs: Inputs) -> Result<Plan> {
             });
         }
         for (id, _) in &source.settings.tools {
-            let builtin = catalog::get(id).context("validated tool")?;
-            let output = projection::compile(project, source, builtin, &mut warnings)
-                .with_context(|| {
-                    format!("{} in {}", id, paths::relative(&project.root, &source.path))
-                })?;
-            if let Some(key) = &builtin.manifest_key {
-                let manifest = source.dir.join("package.json");
-                if let Some(bytes) = inputs.inspect(&manifest)? {
-                    let value: serde_json::Value = serde_json::from_slice(&bytes)
-                        .with_context(|| format!("cannot inspect {}", manifest.display()))?;
-                    if value.get(key).is_some() {
-                        bail!(
-                            "{} contains {key:?}, which competes with the generated {}",
-                            manifest.display(),
-                            paths::relative(&project.root, &output.path)
-                        );
-                    }
-                }
-            }
-            let style = style_at(project, &output.path);
-            let text = render::native(builtin, &output.format, &output.value, &style)
-                .with_context(|| {
-                    format!("rendering {} as {}", output.path.display(), output.format)
-                })?;
-            alternatives.extend(output.alternatives);
-            outputs.push(Output {
-                path: output.path,
-                label: id.clone(),
-                format: output.format,
-                bytes: text.into_bytes(),
-                source: source.path.clone(),
-                explanation: output.explanation,
-                committed: false,
-            });
+            outputs.push(tool_output(
+                project,
+                source,
+                id,
+                &mut inputs,
+                &mut warnings,
+                &mut alternatives,
+            )?);
         }
         for file in &source.settings.files {
-            let path = absolute(&source.dir, Path::new(&file.path))?;
-            if !path.starts_with(&project.root) {
-                bail!(
-                    "{}: file {:?} writes outside the project: {}",
-                    file.origin,
-                    file.label,
-                    file.path
-                );
-            }
-            let text = render::render(&file.format, &file.config, &style_at(project, &path))
-                .with_context(|| {
-                    format!(
-                        "{}: rendering file {:?} as {}",
-                        file.origin, file.label, file.format
-                    )
-                })?;
-            outputs.push(Output {
-                path,
-                label: format!("files.{}", file.label),
-                format: file.format.clone(),
-                bytes: text.into_bytes(),
-                source: source.path.clone(),
-                explanation: Vec::new(),
-                committed: file.committed,
-            });
+            outputs.push(file_output(project, source, file)?);
         }
     }
+    warn_unused_tools(project, &mut warnings);
+    check(project, &outputs, &alternatives, &inputs)?;
+    let mut plan = Plan {
+        root: project.root.clone(),
+        outputs,
+        alternatives,
+        inputs,
+        warnings: warnings.into_iter().collect(),
+        unmanaged: project.unmanaged.clone(),
+    };
+    plan.outputs.sort_by(|a, b| a.path.cmp(&b.path));
+    plan.alternatives.sort();
+    plan.alternatives.dedup();
+    Ok(plan)
+}
+
+/// The native file of the tool `id` for `source`.
+fn tool_output(
+    project: &Project,
+    source: &Source,
+    id: &str,
+    inputs: &mut Inputs,
+    warnings: &mut BTreeSet<String>,
+    alternatives: &mut Vec<PathBuf>,
+) -> Result<Output> {
+    let builtin = catalog::get(id).context("validated tool")?;
+    let output = projection::compile(project, source, builtin, warnings)
+        .with_context(|| format!("{} in {}", id, paths::relative(&project.root, &source.path)))?;
+    if let Some(key) = &builtin.manifest_key {
+        let manifest = source.dir.join("package.json");
+        if let Some(bytes) = inputs.inspect(&manifest)? {
+            let value: serde_json::Value = serde_json::from_slice(&bytes)
+                .with_context(|| format!("cannot inspect {}", manifest.display()))?;
+            if value.get(key).is_some() {
+                bail!(
+                    "{} contains {key:?}, which competes with the generated {}",
+                    manifest.display(),
+                    paths::relative(&project.root, &output.path)
+                );
+            }
+        }
+    }
+    let style = style_at(project, &output.path);
+    let text = render::native(builtin, &output.format, &output.value, &style)
+        .with_context(|| format!("rendering {} as {}", output.path.display(), output.format))?;
+    alternatives.extend(output.alternatives);
+    Ok(Output {
+        path: output.path,
+        label: id.to_owned(),
+        format: output.format,
+        bytes: text.into_bytes(),
+        source: source.path.clone(),
+        explanation: output.explanation,
+        committed: false,
+    })
+}
+
+/// The output of a `files` entry of `source`.
+fn file_output(project: &Project, source: &Source, file: &FileSpec) -> Result<Output> {
+    let path = absolute(&source.dir, Path::new(&file.path))?;
+    if !path.starts_with(&project.root) {
+        bail!(
+            "{}: file {:?} writes outside the project: {}",
+            file.origin,
+            file.label,
+            file.path
+        );
+    }
+    let text = render::render(&file.format, &file.config, &style_at(project, &path)).with_context(
+        || {
+            format!(
+                "{}: rendering file {:?} as {}",
+                file.origin, file.label, file.format
+            )
+        },
+    )?;
+    Ok(Output {
+        path,
+        label: format!("files.{}", file.label),
+        format: file.format.clone(),
+        bytes: text.into_bytes(),
+        source: source.path.clone(),
+        explanation: Vec::new(),
+        committed: file.committed,
+    })
+}
+
+/// Warns about tool options that no source enables.
+fn warn_unused_tools(project: &Project, warnings: &mut BTreeSet<String>) {
     let enabled = project
         .sources
         .iter()
@@ -150,19 +190,6 @@ pub(crate) fn compile(project: &Project, mut inputs: Inputs) -> Result<Plan> {
             }
         }
     }
-    check(project, &outputs, &alternatives, &inputs)?;
-    let mut plan = Plan {
-        root: project.root.clone(),
-        outputs,
-        alternatives,
-        inputs,
-        warnings: warnings.into_iter().collect(),
-        unmanaged: project.unmanaged.clone(),
-    };
-    plan.outputs.sort_by(|a, b| a.path.cmp(&b.path));
-    plan.alternatives.sort();
-    plan.alternatives.dedup();
-    Ok(plan)
 }
 
 /// The layout the sources prescribe for a generated file at `path`.

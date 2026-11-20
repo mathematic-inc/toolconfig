@@ -1,6 +1,6 @@
 //! One native configuration file per enabled tool, from the sections that apply to its files.
 //!
-//! EditorConfig resolves values per file, while native files cover a directory. Each tool is
+//! `EditorConfig` resolves values per file, while native files cover a directory. Each tool is
 //! resolved at a probe path per extension it handles; values that agree go at the top level,
 //! values that differ go into native overrides. Sections that match only some files are checked
 //! through witness paths, so a native file never silently disagrees with `.editorconfig`.
@@ -87,10 +87,10 @@ pub(crate) fn compile(
         .format
         .clone()
         .unwrap_or_else(|| builtin.default.clone());
-    let filename = match &settings.path {
-        Some(path) => path.clone(),
-        None => builtin.formats[&format].clone(),
-    };
+    let filename = settings
+        .path
+        .clone()
+        .unwrap_or_else(|| builtin.formats[&format].clone());
     let context = Context {
         project,
         builtin,
@@ -105,10 +105,10 @@ pub(crate) fn compile(
     };
     let mut probes = Vec::new();
     for extension in &extensions {
-        let probe = match extension {
-            Some(extension) => source.dir.join(format!("{PROBE}.{extension}")),
-            None => source.dir.join(PROBE),
-        };
+        let probe = extension.as_ref().map_or_else(
+            || source.dir.join(PROBE),
+            |extension| source.dir.join(format!("{PROBE}.{extension}")),
+        );
         let leaves = context.evaluate(&probe, &describe_files(extension.as_deref()), warnings)?;
         probes.push((extension.clone(), leaves));
     }
@@ -174,11 +174,64 @@ pub(crate) fn compile(
     })
 }
 
-fn describe_files(extension: Option<&str>) -> String {
-    match extension {
-        Some(extension) => format!("*.{extension} files"),
-        None => "every file".to_owned(),
+/// Groups the files whose overrides are equal, so that one override covers each group.
+fn override_groups(probes: &[(Option<String>, Leaves)], overrides: Vec<Leaves>) -> Vec<Group> {
+    let mut groups = Vec::<Group>::new();
+    for ((extension, _), leaves) in probes.iter().zip(overrides) {
+        if leaves.is_empty() {
+            continue;
+        }
+        let pattern = extension.as_ref().map_or_else(
+            || "**/*".to_owned(),
+            |extension| format!("**/*.{extension}"),
+        );
+        let same = |group: &&mut Group| {
+            group.leaves.len() == leaves.len()
+                && group
+                    .leaves
+                    .iter()
+                    .zip(&leaves)
+                    .all(|(left, right)| left.0 == right.0 && left.1.value == right.1.value)
+        };
+        match groups.iter_mut().find(same) {
+            Some(group) => {
+                group.files.push(pattern);
+                group.extensions.push(extension.clone());
+            }
+            None => groups.push(Group {
+                files: vec![pattern],
+                extensions: vec![extension.clone()],
+                leaves,
+            }),
+        }
     }
+    groups
+}
+
+/// The most common value, or the earliest of equal counts. A missing value gives none.
+fn most_common(values: &[Option<Value>]) -> Option<Value> {
+    if values.iter().any(Option::is_none) {
+        return None;
+    }
+    let mut counts = Vec::<(&Value, usize)>::new();
+    for value in values.iter().flatten() {
+        match counts.iter_mut().find(|(known, _)| *known == value) {
+            Some((_, count)) => *count += 1,
+            None => counts.push((value, 1)),
+        }
+    }
+    counts
+        .iter()
+        .enumerate()
+        .max_by_key(|(index, (_, count))| (*count, std::cmp::Reverse(*index)))
+        .map(|(_, (value, _))| (*value).clone())
+}
+
+fn describe_files(extension: Option<&str>) -> String {
+    extension.map_or_else(
+        || "every file".to_owned(),
+        |extension| format!("*.{extension} files"),
+    )
 }
 
 struct Group {
@@ -213,76 +266,9 @@ impl Context<'_> {
         warnings: &mut BTreeSet<String>,
     ) -> Result<Leaves> {
         let resolved = cascade::resolve(self.project, path);
-        let mut leaves = Leaves::new();
-        if let Some(defaults) = &self.builtin.config {
-            for (path, leaf) in Value::from_json(defaults).leaves() {
-                leaves.push((
-                    path,
-                    Leaf {
-                        value: leaf.clone(),
-                        kind: Kind::Default,
-                        from: format!("{} default", self.builtin.id),
-                    },
-                ));
-            }
-        }
-        let normalized = normalize(&resolved);
-        let options = self.options(&resolved);
-        let mut projected = Leaves::new();
-        for mapping in &self.builtin.projection {
-            if self.skipped(&mapping.property)
-                || mapping
-                    .when
-                    .as_ref()
-                    .is_some_and(|when| !when.holds(&options))
-            {
-                continue;
-            }
-            let Some((value, description, provenance)) = normalized.get(mapping.property.as_str())
-            else {
-                continue;
-            };
-            let from = format!(
-                "{} {description}",
-                provenance
-                    .iter()
-                    .map(|provenance| provenance.display(self.root()))
-                    .collect::<Vec<_>>()
-                    .join(" + ")
-            );
-            let Some(native) = self.native(mapping, value, description, &from)? else {
-                continue;
-            };
-            projected.retain(|(existing, _)| existing != &mapping.path);
-            projected.push((
-                mapping.path.clone(),
-                Leaf {
-                    value: native,
-                    kind: Kind::Projected,
-                    from,
-                },
-            ));
-        }
-        let mut tool = Leaves::new();
-        if let Some(resolution) = resolved.tools.get(&self.builtin.id)
-            && let Some(value) = &resolution.value
-        {
-            for (path, leaf) in value.leaves() {
-                let from = resolution
-                    .provenance
-                    .get(&path)
-                    .map(|provenance| provenance.display(self.root()))
-                    .unwrap_or_default();
-                tool.push((
-                    path.clone(),
-                    Leaf {
-                        value: leaf.clone(),
-                        kind: Kind::Tool,
-                        from: format!("{from} {}.{}", self.builtin.id, display_path(&path)),
-                    },
-                ));
-            }
-        }
+        let mut leaves = self.default_leaves();
+        let projected = self.projected_leaves(&resolved)?;
+        let tool = self.tool_leaves(&resolved);
         let mut redundant = BTreeSet::new();
         for (projected_path, projected_leaf) in &projected {
             for (tool_path, tool_leaf) in &tool {
@@ -337,6 +323,90 @@ impl Context<'_> {
         Ok(leaves)
     }
 
+    /// The tool's own defaults, from the catalog.
+    fn default_leaves(&self) -> Leaves {
+        let mut leaves = Leaves::new();
+        if let Some(defaults) = &self.builtin.config {
+            for (path, leaf) in Value::from_json(defaults).leaves() {
+                leaves.push((
+                    path,
+                    Leaf {
+                        value: leaf.clone(),
+                        kind: Kind::Default,
+                        from: format!("{} default", self.builtin.id),
+                    },
+                ));
+            }
+        }
+        leaves
+    }
+
+    /// The leaves that the standard properties project into the tool.
+    fn projected_leaves(&self, resolved: &Resolved) -> Result<Leaves> {
+        let normalized = normalize(resolved);
+        let options = self.options(resolved);
+        let mut projected = Leaves::new();
+        for mapping in &self.builtin.projection {
+            if self.skipped(&mapping.property)
+                || mapping
+                    .when
+                    .as_ref()
+                    .is_some_and(|when| !when.holds(&options))
+            {
+                continue;
+            }
+            let Some((value, description, provenance)) = normalized.get(mapping.property.as_str())
+            else {
+                continue;
+            };
+            let from = format!(
+                "{} {description}",
+                provenance
+                    .iter()
+                    .map(|provenance| provenance.display(self.root()))
+                    .collect::<Vec<_>>()
+                    .join(" + ")
+            );
+            let Some(native) = self.native(mapping, value, description, &from)? else {
+                continue;
+            };
+            projected.retain(|(existing, _)| existing != &mapping.path);
+            projected.push((
+                mapping.path.clone(),
+                Leaf {
+                    value: native,
+                    kind: Kind::Projected,
+                    from,
+                },
+            ));
+        }
+        Ok(projected)
+    }
+
+    /// The leaves that the tool's own tables set.
+    fn tool_leaves(&self, resolved: &Resolved) -> Leaves {
+        let mut tool = Leaves::new();
+        if let Some(resolution) = resolved.tools.get(&self.builtin.id)
+            && let Some(value) = &resolution.value
+        {
+            for (path, leaf) in value.leaves() {
+                let from = resolution
+                    .provenance
+                    .get(&path)
+                    .map_or_default(|provenance| provenance.display(self.root()));
+                tool.push((
+                    path.clone(),
+                    Leaf {
+                        value: leaf.clone(),
+                        kind: Kind::Tool,
+                        from: format!("{from} {}.{}", self.builtin.id, display_path(&path)),
+                    },
+                ));
+            }
+        }
+        tool
+    }
+
     /// The tool's own options for one file: its defaults, then its tables.
     fn options(&self, resolved: &Resolved) -> Value {
         let mut options = self
@@ -355,8 +425,7 @@ impl Context<'_> {
     fn native_dir_source(&self) -> String {
         self.project
             .source_in(self.dir)
-            .map(|source| paths::relative(self.root(), &source.path))
-            .unwrap_or_default()
+            .map_or_default(|source| paths::relative(self.root(), &source.path))
     }
 
     fn native(
@@ -427,22 +496,7 @@ impl Context<'_> {
                         .or_else(|| default.clone())
                 })
                 .collect::<Vec<_>>();
-            let winner = if effective.iter().any(Option::is_none) {
-                None
-            } else {
-                let mut counts = Vec::<(&Value, usize)>::new();
-                for value in effective.iter().flatten() {
-                    match counts.iter_mut().find(|(known, _)| *known == value) {
-                        Some((_, count)) => *count += 1,
-                        None => counts.push((value, 1)),
-                    }
-                }
-                counts
-                    .iter()
-                    .enumerate()
-                    .max_by_key(|(index, (_, count))| (*count, std::cmp::Reverse(*index)))
-                    .map(|(_, (value, _))| (*value).clone())
-            };
+            let winner = most_common(&effective);
             // A winning value that only comes from defaults stays implicit.
             if let Some(winner) = &winner
                 && let Some(leaf) = leaves.iter().flatten().find(|leaf| leaf.value == *winner)
@@ -454,14 +508,14 @@ impl Context<'_> {
                 if value.is_none() || *value == winner || (winner.is_none() && leaf.is_none()) {
                     continue;
                 }
-                let leaf = match leaf {
-                    Some(leaf) => (*leaf).clone(),
-                    None => Leaf {
+                let leaf = leaf.map_or_else(
+                    || Leaf {
                         value: default.clone().unwrap_or(Value::Null),
                         kind: Kind::Default,
                         from: format!("{} default", self.builtin.id),
                     },
-                };
+                    |leaf| (*leaf).clone(),
+                );
                 overrides[index].push((path.clone(), leaf));
                 differing.get_or_insert_with(|| path.clone());
             }
@@ -470,62 +524,36 @@ impl Context<'_> {
             return Ok((base, Vec::new()));
         };
         if !self.builtin.overrides {
-            let details = probes
+            return Err(self.disagreement(probes, &path));
+        }
+        Ok((base, override_groups(probes, overrides)))
+    }
+
+    /// The error for a tool that cannot vary `path` by extension while its files disagree.
+    fn disagreement(&self, probes: &[(Option<String>, Leaves)], path: &[String]) -> anyhow::Error {
+        let details = probes
+            .iter()
+            .map(|(extension, leaves)| {
+                let files = describe_files(extension.as_deref());
+                find(leaves, path).map_or_else(
+                    || format!("  {files}: the {} default", self.builtin.id),
+                    |leaf| format!("  {files}: {} from {}", leaf.value.describe(), leaf.from),
+                )
+            })
+            .collect::<Vec<_>>();
+        anyhow::anyhow!(
+            "{} cannot vary {} by file type, but its files disagree:\n{}\nhelp: make the values agree for {}, or add the property to [toolconfig.{}] skip",
+            self.native_name(),
+            display_path(path),
+            details.join("\n"),
+            self.builtin
+                .extensions
                 .iter()
-                .map(|(extension, leaves)| {
-                    let files = describe_files(extension.as_deref());
-                    match find(leaves, &path) {
-                        Some(leaf) => {
-                            format!("  {files}: {} from {}", leaf.value.describe(), leaf.from)
-                        }
-                        None => format!("  {files}: the {} default", self.builtin.id),
-                    }
-                })
-                .collect::<Vec<_>>();
-            bail!(
-                "{} cannot vary {} by file type, but its files disagree:\n{}\nhelp: make the values agree for {}, or add the property to [toolconfig.{}] skip",
-                self.native_name(),
-                display_path(&path),
-                details.join("\n"),
-                self.builtin
-                    .extensions
-                    .iter()
-                    .map(|extension| format!("*.{extension}"))
-                    .collect::<Vec<_>>()
-                    .join(", "),
-                self.builtin.id
-            );
-        }
-        let mut groups = Vec::<Group>::new();
-        for ((extension, _), leaves) in probes.iter().zip(overrides) {
-            if leaves.is_empty() {
-                continue;
-            }
-            let pattern = match extension {
-                Some(extension) => format!("**/*.{extension}"),
-                None => "**/*".to_owned(),
-            };
-            let same = |group: &&mut Group| {
-                group.leaves.len() == leaves.len()
-                    && group
-                        .leaves
-                        .iter()
-                        .zip(&leaves)
-                        .all(|(left, right)| left.0 == right.0 && left.1.value == right.1.value)
-            };
-            match groups.iter_mut().find(same) {
-                Some(group) => {
-                    group.files.push(pattern);
-                    group.extensions.push(extension.clone());
-                }
-                None => groups.push(Group {
-                    files: vec![pattern],
-                    extensions: vec![extension.clone()],
-                    leaves,
-                }),
-            }
-        }
-        Ok((base, groups))
+                .map(|extension| format!("*.{extension}"))
+                .collect::<Vec<_>>()
+                .join(", "),
+            self.builtin.id
+        )
     }
 
     /// The tool's own default for a native key, when the catalog records it.
@@ -539,7 +567,7 @@ impl Context<'_> {
     }
 
     /// The leaves a file with `extension` effectively receives from the native file.
-    fn effective(&self, extension: Option<&str>, base: &Leaves, groups: &[Group]) -> Leaves {
+    fn effective(extension: Option<&str>, base: &Leaves, groups: &[Group]) -> Leaves {
         let mut leaves = base.clone();
         let extension = extension.map(str::to_ascii_lowercase);
         if let Some(group) = groups.iter().find(|group| {
@@ -619,7 +647,7 @@ impl Context<'_> {
                     let lookup = if self.builtin.extensions.is_empty() {
                         None
                     } else {
-                        extension.clone()
+                        extension
                     };
                     if !probes.iter().any(|(probe, _)| {
                         probe.as_deref().map(str::to_ascii_lowercase)
@@ -628,7 +656,7 @@ impl Context<'_> {
                         continue;
                     }
                     let actual = self.evaluate(&witness, "these files", warnings)?;
-                    let expected = self.effective(lookup.as_deref(), base, groups);
+                    let expected = Self::effective(lookup.as_deref(), base, groups);
                     if let Some(problem) = mismatch(&actual, &expected) {
                         bail!(
                             "{native} cannot follow section {glob:?} ({origin}): {problem}\nhelp: {help}",
@@ -742,8 +770,7 @@ fn normalize(resolved: &Resolved) -> BTreeMap<&'static str, (Value, String, Vec<
                 describe("indent_style").unwrap_or_default(),
                 vec![
                     get("indent_style")
-                        .map(|resolution| resolution.provenance.clone())
-                        .unwrap_or_else(empty_provenance),
+                        .map_or_else(empty_provenance, |resolution| resolution.provenance.clone()),
                 ],
             ),
         );
