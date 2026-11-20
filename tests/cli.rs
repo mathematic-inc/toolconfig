@@ -674,6 +674,39 @@ fn check_allows_missing_ignored_files() {
     assert_eq!(stdout, "stale\trustfmt.toml\n");
 }
 
+const COMMITTED: &str = r#"root = true
+
+[toolconfig.files.hk]
+path = ".hk/org.pkl"
+format = "text"
+config = "hooks {}\n"
+committed = true
+
+[toolconfig.files.prettierignore]
+path = ".prettierignore"
+format = "lines"
+config = ["dist/"]
+"#;
+
+#[test]
+fn gitignore_block_skips_committed_files() {
+    let project = Project::new();
+    project.write(".toolconfig.toml", COMMITTED);
+    project.ok(&["init", "--gitignore"]);
+    project.ok(&["generate"]);
+    insta::assert_snapshot!("committed_gitignore", project.read(".gitignore"));
+    // A fresh clone must have a committed file, as it must have .editorconfig.
+    std::fs::remove_file(project.path(".hk/org.pkl")).unwrap();
+    let output = project.run(&["check", "--strict"]);
+    assert!(!output.status.success());
+    assert_eq!(
+        String::from_utf8(output.stdout).unwrap(),
+        "missing\t.hk/org.pkl\n"
+    );
+    project.ok(&["generate"]);
+    assert!(project.ok(&["check", "--strict"]).starts_with("Up to date"));
+}
+
 /// Checks that `check` reports `file` once it is edited, and once `changed` replaces the source.
 fn assert_check_catches_drift(project: &Project, file: &str, changed: &str) {
     let generated = project.read(file);

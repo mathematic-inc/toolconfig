@@ -303,6 +303,7 @@ fn file_spec(
     let mut path = None;
     let mut format = None;
     let mut config = None;
+    let mut committed = false;
     for (key, key_repr, entry) in table.entries() {
         let key_origin = lines.origin(key_repr.and_then(toml_edit::Key::span));
         let value = convert(lines, entry, &mut Vec::new(), &mut Vec::new())?;
@@ -310,8 +311,14 @@ fn file_spec(
             "path" => path = Some(string(&value, &key_origin, "path")?),
             "format" => format = Some(string(&value, &key_origin, "format")?),
             "config" => config = Some(value),
+            "committed" => {
+                let Value::Bool(value) = value else {
+                    bail!("{key_origin}: committed must be true or false");
+                };
+                committed = value;
+            }
             other => bail!(
-                "{key_origin}: unknown key {other:?} in file {label:?}; expected path, format or config"
+                "{key_origin}: unknown key {other:?} in file {label:?}; expected path, format, config or committed"
             ),
         }
     }
@@ -320,6 +327,7 @@ fn file_spec(
         path: path.with_context(|| format!("{origin}: file {label:?} needs a path"))?,
         format: format.unwrap_or_else(|| "json".to_owned()),
         config: config.unwrap_or_else(Value::object),
+        committed,
         origin,
     })
 }

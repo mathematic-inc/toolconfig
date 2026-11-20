@@ -81,7 +81,8 @@ they are. To write them from a shared source, use `files`, as the Vale section o
 5. Run the repository's formatters and linters. They should report what they reported before.
 6. Run `toolconfig init --gitignore` to add the managed `.gitignore` block, then
    `git rm --cached` the generated tool files it lists; they stay on disk. Commit the source,
-   `.editorconfig`, `.gitignore` and `.toolconfig.lock`.
+   `.editorconfig`, `.gitignore`, `.toolconfig.lock` and each `files` output that sets
+   `committed = true`.
 7. Make sure the tool files exist wherever tools run: add `toolconfig generate` to a pre-commit
    hook or task runner and to CI before the formatters and linters, and `toolconfig check` to CI.
    In GitHub Actions, [toolconfig-action](https://github.com/mathematic-inc/toolconfig-action)

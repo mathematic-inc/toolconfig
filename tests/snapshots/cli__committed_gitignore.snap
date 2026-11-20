@@ -1,0 +1,8 @@
+---
+source: tests/cli.rs
+expression: "project.read(\".gitignore\")"
+---
+# BEGIN TOOLCONFIG GENERATED FILES
+.toolconfig-stage-*
+/.prettierignore
+# END TOOLCONFIG GENERATED FILES

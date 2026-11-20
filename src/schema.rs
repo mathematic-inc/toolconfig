@@ -123,7 +123,8 @@ pub(crate) fn generate() -> Value {
                 "properties": {
                     "path": { "description": "Path relative to this directory.", "type": "string" },
                     "format": { "enum": ["json", "yaml", "toml", "ini", "text", "lines"] },
-                    "config": { "description": "The file's content: a table, a string for text, or an array of strings for lines." }
+                    "config": { "description": "The file's content: a table, a string for text, or an array of strings for lines." },
+                    "committed": { "description": "Whether the file is committed. The managed .gitignore block does not list a committed file.", "type": "boolean" }
                 },
                 "required": ["path"],
                 "additionalProperties": false

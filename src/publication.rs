@@ -514,11 +514,11 @@ impl Drop for Project {
     }
 }
 
-/// Outputs listed in a managed `.gitignore` block. `.editorconfig` files must be committed.
+/// Outputs listed in a managed `.gitignore` block.
 fn ignored_outputs(plan: &Plan) -> Vec<PathBuf> {
     plan.outputs
         .iter()
-        .filter(|output| !output.is_editorconfig())
+        .filter(|output| !output.committed)
         .map(|output| output.path.clone())
         .collect()
 }
