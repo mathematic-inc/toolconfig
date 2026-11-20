@@ -222,7 +222,8 @@ fn relevant(event: &notify::Event, root: &Path, inputs: &Inputs, outputs: &[Path
             .map(|name| name.to_string_lossy().into_owned())
             .unwrap_or_default();
         if inputs.ignores_events(path)
-            || path.starts_with(root.join(crate::paths::STATE_DIR))
+            || **path == root.join(crate::paths::LOCKFILE)
+            || path.starts_with(root.join(crate::paths::LEGACY_STATE_DIR))
             || path.starts_with(root.join(".git"))
             || outputs.contains(path)
             || name.starts_with(STAGE_PREFIX)

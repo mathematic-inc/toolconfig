@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+### Changes
+
+- Ownership records move from `.toolconfig-state/state.json` to `.toolconfig.lock`, a TOML file
+  beside the root source. The first `generate`, `clean` or `init` moves existing records and
+  removes `.toolconfig-state`; commit both changes. Read-only commands still understand the old
+  layout until then.
+- The writer lock and the publication journal are machine-local, so they now live outside the
+  project under the user's state directory. `TOOLCONFIG_STATE_DIR` overrides the location.
+
 ## 2026.11.3 (2026-11-10)
 
 ### Features

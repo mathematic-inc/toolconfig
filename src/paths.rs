@@ -4,8 +4,11 @@ use std::path::{Component, Path, PathBuf};
 
 use anyhow::{Result, bail};
 
-/// Ownership records and publication state. Distinct from the `.toolconfig` source filename.
-pub(crate) const STATE_DIR: &str = ".toolconfig-state";
+/// Ownership records, committed beside the root source. Not to be confused with the writer lock,
+/// which lives in a per-machine directory with the publication journal.
+pub(crate) const LOCKFILE: &str = ".toolconfig.lock";
+/// Where releases before 2026.11.4 kept ownership records, the writer lock and the journal.
+pub(crate) const LEGACY_STATE_DIR: &str = ".toolconfig-state";
 
 pub(crate) fn is_link(metadata: &std::fs::Metadata) -> bool {
     #[cfg(windows)]

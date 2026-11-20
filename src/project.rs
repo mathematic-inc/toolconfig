@@ -135,7 +135,6 @@ pub(crate) fn load(root: &Path) -> (Result<Project>, Inputs) {
 
 fn load_into(root: &Path, inputs: &mut Inputs) -> Result<Project> {
     let mut directories = BTreeMap::<PathBuf, (Vec<PathBuf>, bool)>::new();
-    let state = root.join(crate::paths::STATE_DIR);
     let cache = repository::cache_root(root)?.map(|path| path.canonicalize().unwrap_or(path));
     if let Some(cache) = &cache {
         inputs.immutable.insert(cache.clone());
@@ -149,7 +148,6 @@ fn load_into(root: &Path, inputs: &mut Inputs) -> Result<Project> {
             let name = entry.file_name();
             !(entry.file_type().is_some_and(|kind| kind.is_dir())
                 && (name == ".git"
-                    || entry.path() == state
                     || cache
                         .as_ref()
                         .is_some_and(|cache| crate::inputs::within(entry.path(), cache))))
