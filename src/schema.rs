@@ -50,7 +50,6 @@ pub(crate) fn generate() -> Value {
     })
 }
 
-/// The `[toolconfig]` keys that do not belong to one tool.
 fn source_settings() -> serde_json::Map<String, Value> {
     let ids = catalog::all()
         .iter()
@@ -91,7 +90,6 @@ fn source_settings() -> serde_json::Map<String, Value> {
     settings
 }
 
-/// The `[toolconfig.<tool>]` settings of one tool.
 fn tool_settings(builtin: &catalog::Builtin) -> Value {
     json!({
         "description": format!("How {} is generated.", builtin.id),

@@ -38,7 +38,6 @@ pub(crate) struct Builtin {
     pub(crate) hcl: Option<Hcl>,
 }
 
-/// How a normalized `EditorConfig` property becomes a native key.
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub(crate) struct Mapping {

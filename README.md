@@ -260,9 +260,9 @@ toolconfig {
 }
 ```
 
-The new Pkl schema uses `null` for omitted `tools` and `skip` lists. Explicit
-`List()` clears an inherited list. Existing pinned schemas retain their
-empty-list defaults; update the schema URI to use repository imports.
+The Pkl schema uses `null` for omitted `tools` and `skip` lists, and an
+explicit `List()` clears an inherited list. A schema URI that pins an older
+release keeps empty-list defaults; update it to use repository imports.
 
 Authentication comes from Git. Public HTTPS needs no login. Private HTTPS uses
 your Git credential helper; SSH URLs use your SSH configuration and agent,
@@ -443,10 +443,6 @@ live outside the project, in `toolconfig/projects` under the user's state
 directory (`~/.local/state` on Linux, `~/Library/Application Support` on macOS,
 `%LOCALAPPDATA%` on Windows). Set `TOOLCONFIG_STATE_DIR` to choose another
 location outside the project.
-
-Releases before 2026.11.4 kept the records in `.toolconfig-state/state.json`.
-The first `generate`, `clean` or `init` of 2026.11.4 or later moves them to
-`.toolconfig.lock` and removes the directory; commit both changes.
 
 ## Adopting ToolConfig
 

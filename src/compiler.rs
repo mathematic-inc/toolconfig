@@ -22,7 +22,6 @@ pub(crate) struct Output {
     pub(crate) bytes: Vec<u8>,
     pub(crate) source: PathBuf,
     pub(crate) explanation: Vec<Explained>,
-    /// `.editorconfig` and files that set committed. The managed `.gitignore` block omits them.
     pub(crate) committed: bool,
 }
 
@@ -97,7 +96,6 @@ pub(crate) fn compile(project: &Project, mut inputs: Inputs) -> Result<Plan> {
     Ok(plan)
 }
 
-/// The native file of the tool `id` for `source`.
 fn tool_output(
     project: &Project,
     source: &Source,
@@ -138,7 +136,6 @@ fn tool_output(
     })
 }
 
-/// The output of a `files` entry of `source`.
 fn file_output(project: &Project, source: &Source, file: &FileSpec) -> Result<Output> {
     let path = absolute(&source.dir, Path::new(&file.path))?;
     if !path.starts_with(&project.root) {
@@ -168,7 +165,6 @@ fn file_output(project: &Project, source: &Source, file: &FileSpec) -> Result<Ou
     })
 }
 
-/// Warns about tool options that no source enables.
 fn warn_unused_tools(project: &Project, warnings: &mut BTreeSet<String>) {
     let enabled = project
         .sources

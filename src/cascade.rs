@@ -22,7 +22,6 @@ impl Provenance {
 
 #[derive(Clone, Debug)]
 pub(crate) struct Resolution {
-    /// The value as `EditorConfig` spells it.
     pub(crate) value: String,
     pub(crate) provenance: Provenance,
 }

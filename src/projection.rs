@@ -174,7 +174,6 @@ pub(crate) fn compile(
     })
 }
 
-/// Groups the files whose overrides are equal, so that one override covers each group.
 fn override_groups(probes: &[(Option<String>, Leaves)], overrides: Vec<Leaves>) -> Vec<Group> {
     let mut groups = Vec::<Group>::new();
     for ((extension, _), leaves) in probes.iter().zip(overrides) {
@@ -323,7 +322,6 @@ impl Context<'_> {
         Ok(leaves)
     }
 
-    /// The tool's own defaults, from the catalog.
     fn default_leaves(&self) -> Leaves {
         let mut leaves = Leaves::new();
         if let Some(defaults) = &self.builtin.config {
@@ -341,7 +339,6 @@ impl Context<'_> {
         leaves
     }
 
-    /// The leaves that the standard properties project into the tool.
     fn projected_leaves(&self, resolved: &Resolved) -> Result<Leaves> {
         let normalized = normalize(resolved);
         let options = self.options(resolved);
@@ -383,7 +380,6 @@ impl Context<'_> {
         Ok(projected)
     }
 
-    /// The leaves that the tool's own tables set.
     fn tool_leaves(&self, resolved: &Resolved) -> Leaves {
         let mut tool = Leaves::new();
         if let Some(resolution) = resolved.tools.get(&self.builtin.id)
@@ -529,7 +525,6 @@ impl Context<'_> {
         Ok((base, override_groups(probes, overrides)))
     }
 
-    /// The error for a tool that cannot vary `path` by extension while its files disagree.
     fn disagreement(&self, probes: &[(Option<String>, Leaves)], path: &[String]) -> anyhow::Error {
         let details = probes
             .iter()

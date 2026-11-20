@@ -1,4 +1,4 @@
-//! Writes the Pkl module and the package files that the binary embeds, from the tool catalog.
+//! Builds the Pkl package that the binary embeds.
 
 use sha2::{Digest, Sha256};
 use std::fmt::Write as _;

@@ -307,7 +307,6 @@ pub(crate) fn check_standard(key: &str, value: &Value) -> Result<()> {
     Ok(())
 }
 
-/// The bare spelling `EditorConfig` uses for a property value.
 pub(crate) fn render_scalar(value: &Value) -> Result<String> {
     let text = match value {
         Value::Bool(value) => value.to_string(),
