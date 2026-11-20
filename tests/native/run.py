@@ -64,6 +64,14 @@ def yamllint(directory):
     assert "indentation" in result.stdout, f"indentation spaces = 4:\n{result.stdout}"
 
 
+def ryl(directory):
+    (directory / "data.yaml").write_text("a:\n  b: 1\n")
+    result = run(["ryl", "check", "data.yaml"], directory, check=False)
+    output = result.stdout + result.stderr
+    assert "expected 4" in output, f"lint.rules.indentation spaces = 4:\n{output}"
+    assert "deprecated" not in output, f"no deprecated configuration:\n{output}"
+
+
 def sqlfluff(directory):
     (directory / "query.sql").write_text("SELECT first_column, second_column FROM some_table\n")
     result = run(["sqlfluff", "lint", "query.sql"], directory, check=False)
@@ -136,6 +144,7 @@ CASES = {
     "oxfmt": ('["*"]\nindent_size = 4\noxfmt.semi = false\n', oxfmt),
     "tombi": ('["*.toml"]\nindent_size = 3\nmax_line_length = 20\n', tombi),
     "yamllint": ('["*.{yaml,yml}"]\nindent_size = 4\n', yamllint),
+    "ryl": ('["*.{yaml,yml}"]\nindent_size = 4\n', ryl),
     "sqlfluff": (
         '["*.sql"]\nmax_line_length = 20\n\n["*.sql".sqlfluff.sqlfluff]\ndialect = "ansi"\n',
         sqlfluff,

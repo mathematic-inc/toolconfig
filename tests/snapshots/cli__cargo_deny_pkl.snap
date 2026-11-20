@@ -1,0 +1,15 @@
+---
+source: tests/cli.rs
+expression: "project.read(\"deny.toml\")"
+---
+[[licenses.exceptions]]
+crate = "x"
+allow = ["ISC"]
+
+[[licenses.clarify]]
+crate = "y"
+expression = "MIT"
+
+[[licenses.clarify.license-files]]
+path = "LICENSE"
+hash = 3171872035

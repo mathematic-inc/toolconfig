@@ -206,7 +206,7 @@
   {
     "id": "ryl",
     "default": "toml",
-    "formats": { "toml": ".ryl.toml", "yaml": ".yamllint.yaml" },
+    "formats": { "toml": ".ryl.toml" },
     "alternatives": [
       "ryl.toml",
       ".ryl.toml",
@@ -216,13 +216,13 @@
       ".config/.ryl.toml",
       ".config/ryl.toml"
     ],
-    "config": { "rules": { "key-duplicates": "enable" } },
+    "config": { "lint": { "rules": { "key-duplicates": "enable" } } },
     "extensions": ["yaml", "yml"],
     "projection": [
-      { "property": "indent_style", "path": ["rules", "indentation", "spaces"], "values": { "space": null } },
-      { "property": "indent_width", "path": ["rules", "indentation", "spaces"], "default": "consistent" },
-      { "property": "max_line_length", "path": ["rules", "line-length", "max"], "default": 80 },
-      { "property": "end_of_line", "path": ["rules", "new-lines", "type"], "values": { "lf": "unix", "crlf": "dos" }, "default": "unix" }
+      { "property": "indent_style", "path": ["lint", "rules", "indentation", "spaces"], "values": { "space": null } },
+      { "property": "indent_width", "path": ["lint", "rules", "indentation", "spaces"], "default": "consistent" },
+      { "property": "max_line_length", "path": ["lint", "rules", "line-length", "max"], "default": 80 },
+      { "property": "end_of_line", "path": ["lint", "rules", "new-lines", "type"], "values": { "lf": "unix", "crlf": "dos" }, "default": "unix" }
     ]
   },
   {

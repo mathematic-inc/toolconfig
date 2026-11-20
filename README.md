@@ -422,9 +422,10 @@ cargo test --locked
 python tests/native/run.py --toolconfig target/debug/toolconfig
 ```
 
-The native suite runs rustfmt, ruff, prettier, oxfmt, tombi, yamllint, sqlfluff, golangci-lint,
-tflint, shellcheck and vale against generated configuration; `mise install` provides them. After
-changing the catalog, refresh the schema with `cargo run -- schema > schema/toolconfig.schema.json`.
+The native suite runs rustfmt, ruff, prettier, oxfmt, tombi, yamllint, ryl, sqlfluff,
+golangci-lint, tflint, shellcheck and vale against generated configuration; `mise install`
+provides them. After changing the catalog, refresh the schema with
+`cargo run -- schema > schema/toolconfig.schema.json`.
 Releases are described in [docs/releasing.md](docs/releasing.md).
 
 ## License

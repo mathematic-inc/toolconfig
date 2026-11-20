@@ -254,6 +254,48 @@ fn editorconfig(path: &Path) -> Vec<(String, String)> {
 }
 
 #[test]
+fn pkl_entries_with_only_elements_are_arrays() {
+    let project = Project::new();
+    project.write(
+        ".toolconfig.pkl",
+        &format!(
+            r#"amends "package://github.com/mathematic-inc/toolconfig/releases/download/v{version}/toolconfig@{version}#/ToolConfig.pkl"
+
+root = true
+
+toolconfig {{
+  tools = List("cargo-deny")
+}}
+
+sections {{
+  ["*"] {{
+    `cargo-deny` {{
+      licenses {{
+        ["exceptions"] {{
+          new {{ crate = "x"; allow = List("ISC") }}
+        }}
+        clarify {{
+          new {{
+            crate = "y"
+            expression = "MIT"
+            ["license-files"] {{
+              new {{ path = "LICENSE"; hash = 0xbd0eed23 }}
+            }}
+          }}
+        }}
+      }}
+    }}
+  }}
+}}
+"#,
+            version = env!("CARGO_PKG_VERSION")
+        ),
+    );
+    project.ok(&["generate"]);
+    insta::assert_snapshot!("cargo_deny_pkl", project.read("deny.toml"));
+}
+
+#[test]
 fn check_reports_drift_and_generate_protects_edits() {
     let project = example();
     project.ok(&["generate"]);
@@ -832,6 +874,17 @@ fn shellcheck_writes_its_rc_file() {
         error.contains("cannot follow section \"*.bash\""),
         "{error}"
     );
+}
+
+#[test]
+fn ryl_rules_go_under_lint() {
+    let project = Project::new();
+    project.write(
+        ".toolconfig.toml",
+        "root = true\n[toolconfig]\ntools = [\"ryl\"]\n[\"*\"]\nend_of_line = \"lf\"\nindent_style = \"space\"\nindent_size = 2\n[\"*\".ryl.lint.rules]\ndocument-start = \"disable\"\n",
+    );
+    project.ok(&["generate"]);
+    insta::assert_snapshot!("ryl", project.read(".ryl.toml"));
 }
 
 #[test]

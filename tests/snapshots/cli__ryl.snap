@@ -1,0 +1,13 @@
+---
+source: tests/cli.rs
+expression: "project.read(\".ryl.toml\")"
+---
+[lint.rules]
+key-duplicates = "enable"
+document-start = "disable"
+
+[lint.rules.indentation]
+spaces = 2
+
+[lint.rules.new-lines]
+type = "unix"
