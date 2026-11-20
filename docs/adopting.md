@@ -84,3 +84,5 @@ they are. To write them from a shared source, use `files`, as the Vale section o
    `.editorconfig`, `.gitignore` and `.toolconfig.lock`.
 7. Make sure the tool files exist wherever tools run: add `toolconfig generate` to a pre-commit
    hook or task runner and to CI before the formatters and linters, and `toolconfig check` to CI.
+   In GitHub Actions, [toolconfig-action](https://github.com/mathematic-inc/toolconfig-action)
+   runs both.
