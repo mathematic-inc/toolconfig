@@ -86,8 +86,9 @@ select = ["E", "F", "I"]
 Tools and editor extensions read these files through their normal discovery, so nothing else
 changes. Generated tool files are gitignored by default, so run `toolconfig generate` after
 cloning, in a pre-commit hook or task runner, and in CI before the tools run. Commit the source,
-`.editorconfig` and `.toolconfig.lock`: editors and other programs read `.editorconfig`
-directly, and the lockfile lets a fresh clone keep owning it.
+`.editorconfig`, `.toolconfig.lock` and each `files` output that sets `committed = true`: editors
+and other programs read these files directly, and the lockfile lets a fresh clone keep owning
+them.
 
 In GitHub Actions, [toolconfig-action](https://github.com/mathematic-inc/toolconfig-action) runs
 `toolconfig check --strict` and `toolconfig generate --strict`. It fails when `.editorconfig` or
@@ -136,7 +137,7 @@ within a source.
   | `<tool>.format` | One of the tool's native formats, such as `"yaml"` for prettier |
   | `<tool>.path` | One of the filenames the tool reads, such as `"_typos.toml"` |
   | `<tool>.skip` | Standard properties not projected into the tool; `["*"]` skips all |
-  | `files.<label>` | A custom output with `path`, `format` and `config`. `format` is `json`, `yaml`, `toml`, `ini`, `text` (a string as it is) or `lines` (a list of strings, one on each line) |
+  | `files.<label>` | A custom output with `path`, `format`, `config` and `committed`. `format` is `json`, `yaml`, `toml`, `ini`, `text` (a string as it is) or `lines` (a list of strings, one on each line). Set `committed = true` on an output that a committed file refers to, such as a Pkl module that `hk.pkl` amends. The managed `.gitignore` block does not list a committed output |
 
 - **`["<glob>"]`** is an EditorConfig section. The quotes are required. Inside a section:
   - Standard properties (`indent_style`, `indent_size`, `tab_width`, `end_of_line`, `charset`,
@@ -218,7 +219,7 @@ replace earlier arrays. Standard properties retain EditorConfig's `unset` behavi
 An omitted `tools` or tool `skip` list inherits the earlier list. An explicit list replaces it;
 `tools = []` disables inherited tools and `skip = []` clears inherited skips. Tool `format` and
 `path` settings override individual fields. Custom files inherit by label; a later definition
-replaces that label's complete `path`, `format` and `config` specification.
+replaces that label's complete `path`, `format`, `config` and `committed` specification.
 
 Globs and generated paths apply relative to the consuming source's directory. Only its `root`
 setting controls the project boundary. Pkl relative imports still resolve beside the fetched
@@ -386,7 +387,7 @@ toolconfig [--root DIR] clean
 
 | Command | Effect |
 | --- | --- |
-| `init` | Create a root source, preserving an existing one. A new source gets a managed `.gitignore` block listing the generated files other than `.editorconfig`; `--no-gitignore` commits them instead, and `--gitignore` adds the block to an existing project |
+| `init` | Create a root source, preserving an existing one. A new source gets a managed `.gitignore` block listing the generated files other than `.editorconfig` and committed `files` outputs; `--no-gitignore` commits them instead, and `--gitignore` adds the block to an existing project |
 | `generate` | Compile every output, check ownership and conflicts, then write. `--watch` regenerates on change and keeps the last good outputs on error |
 | `check` | Fail when a generated file is modified, stale or obsolete, or missing when it is committed. Ignored files may be missing, as in a fresh clone. Use it in CI, or use [toolconfig-action](https://github.com/mathematic-inc/toolconfig-action), which runs it |
 | `validate` | Everything `generate` checks, without writing |
@@ -402,7 +403,8 @@ errors.
 ToolConfig only writes files it owns. `.toolconfig.lock`, a TOML file beside the root source,
 records each generated path, relative to the root, with the hash of the bytes last written.
 Commit it: it carries no machine-specific data, and a fresh clone needs it to recognize the
-committed `.editorconfig`. Ignored files missing from a clone are simply generated again.
+committed files, such as `.editorconfig`. Ignored files missing from a clone are simply generated
+again.
 
 ToolConfig refuses to overwrite hand-written files, files edited after generation, symlinks,
 and native files that compete with a generated one (`.prettierrc.yaml` beside a generated

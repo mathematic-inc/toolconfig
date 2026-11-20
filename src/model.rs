@@ -203,6 +203,7 @@ pub(crate) struct FileSpec {
     pub(crate) path: String,
     pub(crate) format: String,
     pub(crate) config: Value,
+    pub(crate) committed: bool,
     pub(crate) origin: Origin,
 }
 

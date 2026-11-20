@@ -165,6 +165,14 @@ fn settings(origin: &Origin, value: &Value) -> Result<Settings> {
             "files" => {
                 for (label, file) in value.as_object().unwrap_or_default() {
                     let text = |name: &str| file.get(name).and_then(Value::as_str);
+                    // Older pinned schemas have no committed property.
+                    let committed = match file.get("committed") {
+                        None | Some(Value::Null) => false,
+                        Some(Value::Bool(committed)) => *committed,
+                        Some(_) => {
+                            bail!("{origin}: file {label:?} committed must be true or false")
+                        }
+                    };
                     settings.files.push(FileSpec {
                         label: label.clone(),
                         path: text("path")
@@ -172,6 +180,7 @@ fn settings(origin: &Origin, value: &Value) -> Result<Settings> {
                             .to_owned(),
                         format: text("format").unwrap_or("json").to_owned(),
                         config: file.get("config").cloned().unwrap_or_else(Value::object),
+                        committed,
                         origin: origin.clone(),
                     });
                 }

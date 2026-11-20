@@ -117,6 +117,8 @@ class File {{
   format: String = "json"
   /// The file's content: an object, a String for text, or a List of Strings for lines.
   config: Any = new Dynamic {{}}
+  /// Whether the file is committed. The managed .gitignore block does not list a committed file.
+  committed: Boolean = false
 }}
 
 open class Section {{

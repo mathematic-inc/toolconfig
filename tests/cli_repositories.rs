@@ -401,6 +401,45 @@ toolconfig {{
 }
 
 #[test]
+fn gitignore_block_skips_inherited_committed_files() {
+    let fixture = Fixture::new();
+    fixture.write(
+        "source/.toolconfig.pkl",
+        &format!(
+            r#"amends "package://github.com/mathematic-inc/toolconfig/releases/download/v{0}/toolconfig@{0}#/ToolConfig.pkl"
+toolconfig {{
+  files {{
+    ["hk"] {{
+      path = ".hk/org.pkl"
+      format = "text"
+      config = "hooks {{}}\n"
+      committed = true
+    }}
+  }}
+}}
+"#,
+            env!("CARGO_PKG_VERSION")
+        ),
+    );
+    let revision = fixture.commit();
+    fixture.configure(&revision, "");
+    fixture.ok(&["init", "--gitignore"]);
+    fixture.ok(&["generate"]);
+    let ignore = fixture.read(".gitignore");
+    assert!(ignore.contains("# BEGIN TOOLCONFIG"), "{ignore}");
+    assert!(!ignore.contains(".hk"), "{ignore}");
+    fs::remove_file(fixture.path("project/.hk/org.pkl")).unwrap();
+    let output = fixture.command(&["check", "--strict"]).output().unwrap();
+    assert!(!output.status.success());
+    assert_eq!(
+        String::from_utf8(output.stdout).unwrap(),
+        "missing\t.hk/org.pkl\n"
+    );
+    fixture.ok(&["generate"]);
+    fixture.ok(&["check", "--strict"]);
+}
+
+#[test]
 fn corrupted_snapshot_is_rejected_before_publication() {
     let fixture = Fixture::new();
     fixture.write("source/.toolconfig.toml", SHARED);

@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026.11.6 (unreleased)
+
+### Features
+
+- A `files` output can set `committed = true`. The managed `.gitignore` block does not list it,
+  and `check` reports it when it is missing, as it does `.editorconfig`. Set it on a file that a
+  committed file refers to, such as a Pkl module that `hk.pkl` amends. Projects that extend the
+  source inherit the setting.
+
 ## 2026.11.5 (2026-11-20)
 
 ### Bug fixes
