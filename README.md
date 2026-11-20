@@ -89,6 +89,16 @@ cloning, in a pre-commit hook or task runner, and in CI before the tools run. Co
 `.editorconfig` and `.toolconfig.lock`: editors and other programs read `.editorconfig`
 directly, and the lockfile lets a fresh clone keep owning it.
 
+In GitHub Actions, [toolconfig-action](https://github.com/mathematic-inc/toolconfig-action) runs
+`toolconfig check --strict` and `toolconfig generate --strict`. It fails when `.editorconfig` or
+`.toolconfig.lock` changes. It does not install ToolConfig, so put `toolconfig` on `PATH` first,
+for example with mise:
+
+```yaml
+- uses: jdx/mise-action@90f833d396d0cc3674b631d2d225e306476c303a # v5.2.10
+- uses: mathematic-inc/toolconfig-action@1baf7b021e8bf6f0e20737753c13af0fc93c8570 # v2026.11.0
+```
+
 ## Installation
 
 Download an archive from the [releases](https://github.com/mathematic-inc/toolconfig/releases),
@@ -137,13 +147,13 @@ within a source.
     `dotnet_diagnostic.CA1822.severity = "warning"`, is written to `.editorconfig` as is.
 - Keep each section's tables together. Section order decides precedence, as in EditorConfig.
 
-Add `#:schema https://github.com/mathematic-inc/toolconfig/releases/download/v2026.11.4/toolconfig.schema.json`
+Add `#:schema https://github.com/mathematic-inc/toolconfig/releases/download/v2026.11.5/toolconfig.schema.json`
 at the top for completion in Taplo, Tombi and other TOML editors.
 
 ### Pkl sources
 
 ```pkl
-amends "package://github.com/mathematic-inc/toolconfig/releases/download/v2026.11.4/toolconfig@2026.11.4#/ToolConfig.pkl"
+amends "package://github.com/mathematic-inc/toolconfig/releases/download/v2026.11.5/toolconfig@2026.11.5#/ToolConfig.pkl"
 
 local width = 100
 
@@ -237,10 +247,12 @@ to use repository imports.
 
 Authentication comes from Git. Public HTTPS needs no login. Private HTTPS uses your Git
 credential helper; SSH URLs use your SSH configuration and agent, including `GIT_SSH_COMMAND`.
-In CI, configure a helper or SSH key with read access to the shared repository. Test access with
-`git ls-remote <url>` without prompting. ToolConfig disables Git terminal prompts and times out
-Git commands after two minutes. Keep tokens out of URLs and sources; ToolConfig rejects embedded
-HTTPS credentials and suppresses Git's raw error output to avoid disclosing credentials.
+In CI, configure a helper or SSH key with read access to the shared repository.
+[toolconfig-action](https://github.com/mathematic-inc/toolconfig-action) does this with a
+read-only GitHub App token. Test access with `git ls-remote <url>` without prompting.
+ToolConfig disables Git terminal prompts and times out Git commands after two minutes. Keep
+tokens out of URLs and sources; ToolConfig rejects embedded HTTPS credentials and suppresses
+Git's raw error output to avoid disclosing credentials.
 
 Fetched commits are stored in the user's cache directory under `toolconfig/repos`. Set
 `TOOLCONFIG_REPO_CACHE_DIR` to choose another location; relative paths resolve from the project
@@ -376,7 +388,7 @@ toolconfig [--root DIR] clean
 | --- | --- |
 | `init` | Create a root source, preserving an existing one. A new source gets a managed `.gitignore` block listing the generated files other than `.editorconfig`; `--no-gitignore` commits them instead, and `--gitignore` adds the block to an existing project |
 | `generate` | Compile every output, check ownership and conflicts, then write. `--watch` regenerates on change and keeps the last good outputs on error |
-| `check` | Fail when a generated file is modified, stale or obsolete, or missing when it is committed. Ignored files may be missing, as in a fresh clone. Use it in CI |
+| `check` | Fail when a generated file is modified, stale or obsolete, or missing when it is committed. Ignored files may be missing, as in a fresh clone. Use it in CI, or use [toolconfig-action](https://github.com/mathematic-inc/toolconfig-action), which runs it |
 | `validate` | Everything `generate` checks, without writing |
 | `list` | Each generated file with its format, status and source |
 | `explain` | Every generated key, its value and the source line it came from |
@@ -403,9 +415,9 @@ writer lock and the journal are local to the machine and live outside the projec
 `~/Library/Application Support` on macOS, `%LOCALAPPDATA%` on Windows). Set
 `TOOLCONFIG_STATE_DIR` to choose another location outside the project.
 
-Earlier releases kept the records in `.toolconfig-state/state.json`. The first `generate`,
-`clean` or `init` of this release moves them to `.toolconfig.lock` and removes the directory;
-commit both changes.
+Releases before 2026.11.4 kept the records in `.toolconfig-state/state.json`. The first
+`generate`, `clean` or `init` of 2026.11.4 or later moves them to `.toolconfig.lock` and removes
+the directory; commit both changes.
 
 ## Adopting ToolConfig
 

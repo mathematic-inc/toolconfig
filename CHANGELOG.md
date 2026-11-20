@@ -1,6 +1,6 @@
 # Changelog
 
-## 2026.11.5 (unreleased)
+## 2026.11.5 (2026-11-20)
 
 ### Bug fixes
 
