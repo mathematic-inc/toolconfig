@@ -1,6 +1,6 @@
 # Changelog
 
-## 2026.11.6 (unreleased)
+## 2026.11.6 (2026-11-20)
 
 ### Features
 
