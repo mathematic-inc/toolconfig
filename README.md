@@ -457,12 +457,16 @@ people and assistants.
 ## Development
 
 ```sh
-cargo run -- generate
-cargo fmt --check
-cargo clippy --all-targets -- -D warnings
+mise install
+mise run generate
+mise run check
 cargo test --locked
 python tests/native/run.py --toolconfig target/debug/toolconfig
 ```
+
+`mise run generate` writes the tool configuration with the ToolConfig that
+`cargo run` builds. `mise run check` runs every check of the organization with
+hk, and `mise run fix` applies the fixes that the tools can make.
 
 The native suite runs rustfmt, ruff, prettier, oxfmt, tombi, yamllint, ryl,
 sqlfluff, golangci-lint, tflint, shellcheck and vale against generated
