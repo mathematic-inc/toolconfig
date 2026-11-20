@@ -1,0 +1,24 @@
+amends ".hk/org.pkl"
+
+// ToolConfig writes these files, and the tests and `toolconfig check` compare them with its output
+// byte for byte.
+exclude =
+  super.exclude
+    + List(
+      "examples/**/.editorconfig",
+      "examples/**/.oxfmtrc.json",
+      "examples/**/.oxlintrc.json",
+      "examples/**/.prettierignore",
+      "examples/**/.prettierrc.json",
+      "examples/**/.toolconfig.lock",
+      "examples/**/ruff.toml",
+      "examples/**/rustfmt.toml",
+      "examples/**/typos.toml",
+      "schema/toolconfig.schema.json",
+    )
+
+steps {
+  ["toolconfig"] { check = "cargo run --quiet -- generate --strict" }
+  // The step of the organization sets `workspace_indicator = null`, so `{{workspace}}` has no value.
+  ["cargo-deny"] { dir = "{{root}}" }
+}
