@@ -415,6 +415,7 @@ well; [docs/adopting.md](docs/adopting.md) is written for both people and assist
 ## Development
 
 ```sh
+cargo run -- generate
 cargo fmt --check
 cargo clippy --all-targets -- -D warnings
 cargo test --locked
