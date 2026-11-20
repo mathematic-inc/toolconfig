@@ -42,7 +42,7 @@ struct State {
 }
 
 impl State {
-    fn empty() -> Self {
+    const fn empty() -> Self {
         Self {
             version: STATE_VERSION,
             outputs: BTreeMap::new(),
@@ -212,7 +212,7 @@ impl Project {
             if !desired.contains(&path) {
                 let before = owned_snapshot(&self.root, &path, &state)?;
                 if before.is_some() {
-                    changes.push((path.clone(), before, None));
+                    changes.push((path, before, None));
                 }
             }
         }
@@ -244,7 +244,7 @@ impl Project {
         }
         state.outputs = outputs;
         let count = changes.len();
-        self.commit(state, changes)?;
+        self.commit(&state, changes)?;
         eprintln!(
             "toolconfig: generated {} files ({count} changed)",
             desired.len()
@@ -267,7 +267,7 @@ impl Project {
         let ignored = ignored_outputs(plan);
         let content = ignore::update(&self.root, &ignored, bytes.as_deref())?;
         if bytes.as_deref() != Some(&content) {
-            self.commit(state, vec![(path, before, Some(content))])?;
+            self.commit(&state, vec![(path, before, Some(content))])?;
         }
         report_tracked(&self.root, &ignored);
         Ok(())
@@ -294,7 +294,7 @@ impl Project {
         }
         state.outputs = remaining;
         let count = changes.len();
-        self.commit(state, changes)?;
+        self.commit(&state, changes)?;
         eprintln!("toolconfig: removed {count} generated files");
         if !preserved.is_empty() {
             bail!(
@@ -307,7 +307,7 @@ impl Project {
 
     fn commit(
         &self,
-        state: State,
+        state: &State,
         changes: Vec<(PathBuf, Option<Snapshot>, Option<Vec<u8>>)>,
     ) -> Result<()> {
         let journal_path = self.journal_path();
@@ -325,25 +325,24 @@ impl Project {
                 return Ok(());
             }
         }
-        let mut stages = Vec::new();
+        let mut pending = Vec::new();
         let mut entries = Vec::new();
         for (path, before, content) in changes {
-            let stage = content
+            let file = content
                 .as_ref()
                 .map(|bytes| stage_file(&path, bytes, before.as_ref().map(|old| old.mode)))
                 .transpose()?;
-            let after = stage
+            let after = file
                 .as_ref()
-                .map(|stage| snapshot_file(stage.as_file()))
+                .map(|file| snapshot_file(file.as_file()))
                 .transpose()?;
-            let stage_path = stage.as_ref().map(|stage| stage.path().to_path_buf());
             entries.push(Change {
                 path,
                 before,
                 after,
-                stage: stage_path,
+                stage: file.as_ref().map(|file| file.path().to_path_buf()),
             });
-            stages.push(stage);
+            pending.push(file);
         }
         let journal = Journal {
             version: STATE_VERSION,
@@ -353,20 +352,18 @@ impl Project {
         };
         write_json(&journal_path, &journal, 0o600)?;
         let result = (|| -> Result<()> {
-            for (change, stage) in journal.changes.iter().zip(stages.iter_mut()) {
+            for (change, file) in journal.changes.iter().zip(pending.iter_mut()) {
                 verify_current(&change.path, change.before.as_ref())?;
-                match stage.take() {
-                    Some(stage) => {
+                match file.take() {
+                    Some(file) => {
                         if change.before.is_some() {
-                            stage
-                                .persist(&change.path)
+                            file.persist(&change.path)
                                 .map_err(|error| error.error)
                                 .with_context(|| {
                                     format!("cannot replace {}", change.path.display())
                                 })?;
                         } else {
-                            stage
-                                .persist_noclobber(&change.path)
+                            file.persist_noclobber(&change.path)
                                 .map_err(|error| error.error)
                                 .with_context(|| {
                                     format!("refusing to overwrite {}", change.path.display())
@@ -379,7 +376,7 @@ impl Project {
                 }
                 sync_parent(&change.path)?;
             }
-            write_state(&self.root, &state)?;
+            write_state(&self.root, state)?;
             std::fs::remove_file(&journal_path)?;
             sync_parent(&journal_path)?;
             Ok(())
@@ -406,6 +403,30 @@ impl Project {
         if journal.version != STATE_VERSION || journal.root != self.root {
             bail!("publication journal belongs to a different project or version");
         }
+        self.validate_journal(&journal)?;
+        if self.state()?.generation()? != journal.generation {
+            Self::roll_back(&journal)?;
+        }
+        for change in &journal.changes {
+            if let (Some(stage), Some(after)) = (&change.stage, &change.after)
+                && let Some(current) = read_snapshot(stage)?
+            {
+                if current.identity != after.identity || current.hash != after.hash {
+                    bail!(
+                        "unexpected replacement of staged file {}; preserving it",
+                        stage.display()
+                    );
+                }
+                std::fs::remove_file(stage)?;
+            }
+        }
+        std::fs::remove_file(&journal_path)?;
+        sync_parent(&journal_path)?;
+        eprintln!("toolconfig: recovered an interrupted publication");
+        Ok(())
+    }
+
+    fn validate_journal(&self, journal: &Journal) -> Result<()> {
         let mut destinations = BTreeSet::new();
         for change in &journal.changes {
             if !change.path.is_absolute()
@@ -437,71 +458,56 @@ impl Project {
                 bail!("invalid staging path in publication journal");
             }
         }
-        let committed = self.state()?.generation()? == journal.generation;
-        if !committed {
-            for change in journal.changes.iter().rev() {
-                let current = read_snapshot(&change.path)?;
-                if same_content(current.as_ref(), change.before.as_ref()) {
-                    continue;
+        Ok(())
+    }
+
+    fn roll_back(journal: &Journal) -> Result<()> {
+        for change in journal.changes.iter().rev() {
+            let current = read_snapshot(&change.path)?;
+            if same_content(current.as_ref(), change.before.as_ref()) {
+                continue;
+            }
+            let is_ours = match (&current, &change.after) {
+                (Some(current), Some(after)) => {
+                    current.hash == after.hash && current.identity == after.identity
                 }
-                let is_ours = match (&current, &change.after) {
-                    (Some(current), Some(after)) => {
-                        current.hash == after.hash && current.identity == after.identity
-                    }
-                    (None, None) => true,
-                    _ => false,
-                };
-                if !is_ours {
-                    if change.before.is_none() {
-                        // Exclusive creation lost a race, or somebody replaced our new file.
-                        // The prior generation owned nothing here, so leave the foreign file alone.
-                        eprintln!(
-                            "toolconfig: preserved unexpected file {}",
-                            change.path.display()
-                        );
-                        continue;
-                    }
-                    bail!(
-                        "{} changed during an interrupted publication; preserving it and the recovery journal",
+                (None, None) => true,
+                _ => false,
+            };
+            if !is_ours {
+                if change.before.is_none() {
+                    // Exclusive creation lost a race, or somebody replaced our new file.
+                    // The prior generation owned nothing here, so leave the foreign file alone.
+                    eprintln!(
+                        "toolconfig: preserved unexpected file {}",
                         change.path.display()
                     );
+                    continue;
                 }
-                match &change.before {
-                    Some(before) => {
-                        let stage = stage_file(&change.path, &before.bytes()?, Some(before.mode))?;
-                        if current.is_some() {
-                            stage.persist(&change.path).map_err(|error| error.error)?;
-                        } else {
-                            stage
-                                .persist_noclobber(&change.path)
-                                .map_err(|error| error.error)?;
-                        }
-                    }
-                    None => {
-                        if current.is_some() {
-                            std::fs::remove_file(&change.path)?;
-                        }
-                    }
-                }
-                sync_parent(&change.path)?;
+                bail!(
+                    "{} changed during an interrupted publication; preserving it and the recovery journal",
+                    change.path.display()
+                );
             }
-        }
-        for change in &journal.changes {
-            if let (Some(stage), Some(after)) = (&change.stage, &change.after)
-                && let Some(current) = read_snapshot(stage)?
-            {
-                if current.identity != after.identity || current.hash != after.hash {
-                    bail!(
-                        "unexpected replacement of staged file {}; preserving it",
-                        stage.display()
-                    );
+            match &change.before {
+                Some(before) => {
+                    let stage = stage_file(&change.path, &before.bytes()?, Some(before.mode))?;
+                    if current.is_some() {
+                        stage.persist(&change.path).map_err(|error| error.error)?;
+                    } else {
+                        stage
+                            .persist_noclobber(&change.path)
+                            .map_err(|error| error.error)?;
+                    }
                 }
-                std::fs::remove_file(stage)?;
+                None => {
+                    if current.is_some() {
+                        std::fs::remove_file(&change.path)?;
+                    }
+                }
             }
+            sync_parent(&change.path)?;
         }
-        std::fs::remove_file(&journal_path)?;
-        sync_parent(&journal_path)?;
-        eprintln!("toolconfig: recovered an interrupted publication");
         Ok(())
     }
 }
@@ -514,7 +520,6 @@ impl Drop for Project {
     }
 }
 
-/// Outputs listed in a managed `.gitignore` block.
 fn ignored_outputs(plan: &Plan) -> Vec<PathBuf> {
     plan.outputs
         .iter()
@@ -988,12 +993,11 @@ fn report_tracked(root: &Path, paths: &[PathBuf]) {
     let prefix = prefix
         .ok()
         .filter(|output| output.status.success())
-        .map(|output| {
+        .map_or_default(|output| {
             String::from_utf8_lossy(&output.stdout)
                 .trim_end()
                 .to_owned()
-        })
-        .unwrap_or_default();
+        });
     let tracked = output
         .stdout
         .split(|byte| *byte == 0)

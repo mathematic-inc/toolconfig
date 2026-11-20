@@ -12,26 +12,26 @@ pub(crate) enum Value {
     String(String),
     /// A TOML date or time, kept in its RFC 3339 spelling.
     Datetime(String),
-    Array(Vec<Value>),
-    Object(Vec<(String, Value)>),
+    Array(Vec<Self>),
+    Object(Vec<(String, Self)>),
 }
 
 /// A key path from an object's root to one of its leaves.
 pub(crate) type Path = Vec<String>;
 
 impl Value {
-    pub(crate) fn object() -> Self {
+    pub(crate) const fn object() -> Self {
         Self::Object(Vec::new())
     }
 
-    pub(crate) fn as_object(&self) -> Option<&[(String, Value)]> {
+    pub(crate) fn as_object(&self) -> Option<&[(String, Self)]> {
         match self {
             Self::Object(fields) => Some(fields),
             _ => None,
         }
     }
 
-    pub(crate) fn get(&self, key: &str) -> Option<&Value> {
+    pub(crate) fn get(&self, key: &str) -> Option<&Self> {
         self.as_object()?
             .iter()
             .find(|(name, _)| name == key)
@@ -39,7 +39,7 @@ impl Value {
     }
 
     /// The value at `path`, through nested objects.
-    pub(crate) fn get_path(&self, path: &[String]) -> Option<&Value> {
+    pub(crate) fn get_path(&self, path: &[String]) -> Option<&Self> {
         path.iter().try_fold(self, |value, key| value.get(key))
     }
 
@@ -50,12 +50,12 @@ impl Value {
         }
     }
 
-    pub(crate) fn is_empty_object(&self) -> bool {
+    pub(crate) const fn is_empty_object(&self) -> bool {
         matches!(self, Self::Object(fields) if fields.is_empty())
     }
 
     /// Scalars, arrays and empty objects, in document order.
-    pub(crate) fn leaves(&self) -> Vec<(Path, &Value)> {
+    pub(crate) fn leaves(&self) -> Vec<(Path, &Self)> {
         fn walk<'a>(value: &'a Value, path: &mut Path, leaves: &mut Vec<(Path, &'a Value)>) {
             match value {
                 Value::Object(fields) if !fields.is_empty() => {
@@ -76,7 +76,7 @@ impl Value {
     }
 
     /// Sets a leaf, creating intermediate objects and keeping existing key positions.
-    pub(crate) fn set_path(&mut self, path: &[String], value: Value) -> Result<()> {
+    pub(crate) fn set_path(&mut self, path: &[String], value: Self) -> Result<()> {
         let Some((first, rest)) = path.split_first() else {
             *self = value;
             return Ok(());
@@ -84,13 +84,13 @@ impl Value {
         let Self::Object(fields) = self else {
             bail!("cannot set {first:?} inside a value that is not a table");
         };
-        let index = match fields.iter().position(|(key, _)| key == first) {
-            Some(index) => index,
-            None => {
-                fields.push((first.clone(), Value::object()));
+        let index = fields
+            .iter()
+            .position(|(key, _)| key == first)
+            .unwrap_or_else(|| {
+                fields.push((first.clone(), Self::object()));
                 fields.len() - 1
-            }
-        };
+            });
         let slot = &mut fields[index].1;
         if rest.is_empty() {
             *slot = value;
@@ -104,7 +104,7 @@ impl Value {
     }
 
     /// Merges `other` into `self`: tables merge key by key; anything else is replaced.
-    pub(crate) fn merge(&mut self, other: &Value) {
+    pub(crate) fn merge(&mut self, other: &Self) {
         match (self, other) {
             (Self::Object(fields), Self::Object(incoming)) => {
                 for (key, value) in incoming {
@@ -153,10 +153,10 @@ impl Value {
         match value {
             serde_json::Value::Null => Self::Null,
             serde_json::Value::Bool(value) => Self::Bool(*value),
-            serde_json::Value::Number(number) => match number.as_i64() {
-                Some(value) => Self::Int(value),
-                None => Self::Float(number.as_f64().unwrap_or_default()),
-            },
+            serde_json::Value::Number(number) => number.as_i64().map_or_else(
+                || Self::Float(number.as_f64().unwrap_or_default()),
+                Self::Int,
+            ),
             serde_json::Value::String(value) => Self::String(value.clone()),
             serde_json::Value::Array(values) => {
                 Self::Array(values.iter().map(Self::from_json).collect())
@@ -219,10 +219,8 @@ impl Value {
 
     /// A compact single-line spelling for diagnostics.
     pub(crate) fn describe(&self) -> String {
-        match self.to_json() {
-            Ok(json) => json.to_string(),
-            Err(_) => format!("{self:?}"),
-        }
+        self.to_json()
+            .map_or_else(|_| format!("{self:?}"), |json| json.to_string())
     }
 }
 

@@ -7,6 +7,7 @@
 //! `hclfmt`'s: runs of single-line attributes align on `=`, and blocks stand apart.
 
 use anyhow::{Result, bail};
+use std::fmt::Write as _;
 
 use super::Style;
 use crate::catalog::Hcl;
@@ -184,7 +185,7 @@ fn layout(items: &[Item], depth: usize, style: &Style, text: &mut String) {
         for item in &items[index..index + run] {
             match item {
                 Item::Attribute(name, value) => {
-                    text.push_str(&format!("{pad}{name:width$} = {value}\n"));
+                    let _ = writeln!(text, "{pad}{name:width$} = {value}");
                 }
                 Item::Block(block) => {
                     text.push_str(block);
@@ -222,10 +223,11 @@ fn expression(value: &Value, depth: usize, column: usize, style: &Style) -> Resu
             let mut text = "[\n".to_owned();
             for value in values {
                 let column = (depth + 1) * style.indent;
-                text.push_str(&format!(
-                    "{inner}{},\n",
+                writeln!(
+                    text,
+                    "{inner}{},",
                     expression(value, depth + 1, column, style)?
-                ));
+                )?;
             }
             text.push_str(&style.pad(depth));
             text.push(']');
@@ -290,7 +292,9 @@ fn quote(text: &str) -> String {
                 quoted.push(ch);
                 quoted.push(ch);
             }
-            ch if ch.is_control() => quoted.push_str(&format!("\\u{:04x}", u32::from(ch))),
+            ch if ch.is_control() => {
+                let _ = write!(quoted, "\\u{:04x}", u32::from(ch));
+            }
             ch => quoted.push(ch),
         }
     }
@@ -315,13 +319,13 @@ mod tests {
         }
     }
 
-    fn hcl(json: serde_json::Value) -> Result<String> {
-        render(&Value::from_json(&json), &schema(), &Style::default())
+    fn hcl(json: &serde_json::Value) -> Result<String> {
+        render(&Value::from_json(json), &schema(), &Style::default())
     }
 
     #[test]
     fn renders_blocks_labels_and_attributes_like_hclfmt() {
-        let text = hcl(serde_json::json!({
+        let text = hcl(&serde_json::json!({
             "config": {
                 "format": "compact",
                 "call_module_type": "all",
@@ -369,7 +373,7 @@ rule "empty" {}
             "bbbbbbbbbbbbbbbbbbbb",
             "cccccccccccccccccccc",
         ];
-        let text = hcl(serde_json::json!({
+        let text = hcl(&serde_json::json!({
             "config": [{"varfile": long}, {"force": true}]
         }))
         .unwrap();
@@ -387,12 +391,12 @@ rule "empty" {}
 
     #[test]
     fn refuses_what_it_cannot_place_or_name() {
-        let error = hcl(serde_json::json!({"rule": {"x": {"nested": {"a": 1}}}})).unwrap_err();
+        let error = hcl(&serde_json::json!({"rule": {"x": {"nested": {"a": 1}}}})).unwrap_err();
         assert!(error.is::<Unplaced>(), "{error}");
         assert!(error.to_string().contains("rule.x.nested"), "{error}");
-        assert!(hcl(serde_json::json!({"plugin": {"aws": {"enabled": true}}})).is_err());
-        assert!(hcl(serde_json::json!({"bad key": 1})).is_err());
-        assert!(hcl(serde_json::json!({"rule": {"x": 1}})).is_err());
-        assert!(hcl(serde_json::json!(["not", "a", "body"])).is_err());
+        assert!(hcl(&serde_json::json!({"plugin": {"aws": {"enabled": true}}})).is_err());
+        assert!(hcl(&serde_json::json!({"bad key": 1})).is_err());
+        assert!(hcl(&serde_json::json!({"rule": {"x": 1}})).is_err());
+        assert!(hcl(&serde_json::json!(["not", "a", "body"])).is_err());
     }
 }

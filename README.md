@@ -6,11 +6,12 @@
 
 EditorConfig, extended to your tools.
 
-You write EditorConfig sections in TOML, plus a table of native options for each tool.
-ToolConfig generates the plain `.editorconfig` that editors read and each tool's own
-configuration file: `rustfmt.toml`, `ruff.toml`, `.prettierrc.json`, and so on. Indentation,
-line width and line endings are written once, and every tool receives them in its own keys,
-so editors, formatters and linters cannot disagree.
+You write EditorConfig sections in TOML, plus a table of native options for each
+tool. ToolConfig generates the plain `.editorconfig` that editors read and each
+tool's own configuration file: `rustfmt.toml`, `ruff.toml`, `.prettierrc.json`,
+and so on. Indentation, line width and line endings are written once, and every
+tool receives them in its own keys, so editors, formatters and linters cannot
+disagree.
 
 ```toml
 # .toolconfig.toml
@@ -83,34 +84,38 @@ line-ending = "lf"
 select = ["E", "F", "I"]
 ```
 
-Tools and editor extensions read these files through their normal discovery, so nothing else
-changes. Generated tool files are gitignored by default, so run `toolconfig generate` after
-cloning, in a pre-commit hook or task runner, and in CI before the tools run. Commit the source,
-`.editorconfig`, `.toolconfig.lock` and each `files` output that sets `committed = true`: editors
-and other programs read these files directly, and the lockfile lets a fresh clone keep owning
-them.
+Tools and editor extensions read these files through their normal discovery, so
+nothing else changes. Generated tool files are gitignored by default, so run
+`toolconfig generate` after cloning, in a pre-commit hook or task runner, and in
+CI before the tools run. Commit the source, `.editorconfig`, `.toolconfig.lock`
+and each `files` output that sets `committed = true`: editors and other programs
+read these files directly, and the lockfile lets a fresh clone keep owning them.
 
-In GitHub Actions, [toolconfig-action](https://github.com/mathematic-inc/toolconfig-action) runs
-`toolconfig check --strict` and `toolconfig generate --strict`. It fails when `.editorconfig` or
-`.toolconfig.lock` changes. It does not install ToolConfig, so put `toolconfig` on `PATH` first,
-for example with mise:
+In GitHub Actions,
+[toolconfig-action](https://github.com/mathematic-inc/toolconfig-action) runs
+`toolconfig check --strict` and `toolconfig generate --strict`. It fails when
+`.editorconfig` or `.toolconfig.lock` changes. It does not install ToolConfig,
+so put `toolconfig` on `PATH` first, for example with mise:
 
 ```yaml
-- uses: jdx/mise-action@90f833d396d0cc3674b631d2d225e306476c303a # v5.2.10
-- uses: mathematic-inc/toolconfig-action@1baf7b021e8bf6f0e20737753c13af0fc93c8570 # v2026.11.0
+- uses: jdx/mise-action@v5.2.10
+- uses: mathematic-inc/toolconfig-action@v2026.11.0
 ```
+
+Pin each action to its full commit ID, with the version in a comment.
 
 ## Installation
 
-Download an archive from the [releases](https://github.com/mathematic-inc/toolconfig/releases),
-or install a prebuilt binary with `cargo binstall toolconfig` or
+Download an archive from the
+[releases](https://github.com/mathematic-inc/toolconfig/releases), or install a
+prebuilt binary with `cargo binstall toolconfig` or
 `mise use github:mathematic-inc/toolconfig`. To build from source, run
 `cargo install toolconfig --locked` with Rust 1.98 or newer.
 
 ## Sources
 
-Each directory may hold one source. Every name below uses the same model, and directories can
-mix them.
+Each directory may hold one source. Every name below uses the same model, and
+directories can mix them.
 
 | Filename | Syntax | Notes |
 | --- | --- | --- |
@@ -119,15 +124,17 @@ mix them.
 | `.editorconfig.toml` | TOML | Names itself as the source of the `.editorconfig` beside it |
 | `.toolconfig.pkl` | Pkl | Functions, imports and types, evaluated by an embedded Pkl interpreter |
 
-The project root is the nearest directory whose source sets `root = true`; `--root DIR` or
-`TOOLCONFIG_ROOT` overrides the search. Every source below the root takes part, except in
-Git-ignored paths and in subdirectories that start their own project with `root = true`.
-Sources cascade exactly like `.editorconfig` files: closer sources win, and later sections win
-within a source.
+The project root is the nearest directory whose source sets `root = true`;
+`--root DIR` or `TOOLCONFIG_ROOT` overrides the search. Every source below the
+root takes part, except in Git-ignored paths and in subdirectories that start
+their own project with `root = true`. Sources cascade exactly like
+`.editorconfig` files: closer sources win, and later sections win within a
+source.
 
 ### TOML sources
 
 - **`root = true`** marks the project root. It must appear in the root source.
+
 - **`[toolconfig]`** configures the files generated in this directory:
 
   | Key | Meaning |
@@ -139,16 +146,23 @@ within a source.
   | `<tool>.skip` | Standard properties not projected into the tool; `["*"]` skips all |
   | `files.<label>` | A custom output with `path`, `format`, `config` and `committed`. `format` is `json`, `yaml`, `toml`, `ini`, `text` (a string as it is) or `lines` (a list of strings, one on each line). Set `committed = true` on an output that a committed file refers to, such as a Pkl module that `hk.pkl` amends. The managed `.gitignore` block does not list a committed output |
 
-- **`["<glob>"]`** is an EditorConfig section. The quotes are required. Inside a section:
-  - Standard properties (`indent_style`, `indent_size`, `tab_width`, `end_of_line`, `charset`,
-    `trim_trailing_whitespace`, `insert_final_newline`, `max_line_length`,
-    `spelling_language`) are typed, written to `.editorconfig` and projected into tools.
-  - A tool's id (`rustfmt.edition`, `["*.py".ruff.lint]`) holds native options for that tool.
+- **`["<glob>"]`** is an EditorConfig section. The quotes are required. Inside a
+  section:
+  - Standard properties (`indent_style`, `indent_size`, `tab_width`,
+    `end_of_line`, `charset`, `trim_trailing_whitespace`,
+    `insert_final_newline`, `max_line_length`, `spelling_language`) are typed,
+    written to `.editorconfig` and projected into tools.
+  - A tool's id (`rustfmt.edition`, `["*.py".ruff.lint]`) holds native options
+    for that tool.
   - Anything else, such as `shell_variant = "bash"` or
-    `dotnet_diagnostic.CA1822.severity = "warning"`, is written to `.editorconfig` as is.
-- Keep each section's tables together. Section order decides precedence, as in EditorConfig.
+    `dotnet_diagnostic.CA1822.severity = "warning"`, is written to
+    `.editorconfig` as is.
 
-Add `#:schema https://github.com/mathematic-inc/toolconfig/releases/download/v2026.11.6/toolconfig.schema.json`
+- Keep each section's tables together. Section order decides precedence, as in
+  EditorConfig.
+
+Add
+`#:schema https://github.com/mathematic-inc/toolconfig/releases/download/v2026.11.6/toolconfig.schema.json`
 at the top for completion in Taplo, Tombi and other TOML editors.
 
 ### Pkl sources
@@ -183,9 +197,9 @@ sections {
 }
 ```
 
-The package is embedded in the binary, so evaluation works offline. Other EditorConfig
-properties go in `properties`. Pkl can read `env:TOOLCONFIG_ROOT_DIR` and
-`env:TOOLCONFIG_SOURCE_DIR`.
+The package is embedded in the binary, so evaluation works offline. Other
+EditorConfig properties go in `properties`. Pkl can read
+`env:TOOLCONFIG_ROOT_DIR` and `env:TOOLCONFIG_SOURCE_DIR`.
 
 ### Shared configuration from Git
 
@@ -194,42 +208,46 @@ Import a complete configuration from a public or private repository:
 ```toml
 root = true
 
-[toolconfig]
-extends = [
-  { git = "https://github.com/acme/toolconfig.git", rev = "0123456789abcdef0123456789abcdef01234567" }
-]
+[[toolconfig.extends]]
+git = "https://github.com/acme/toolconfig.git"
+rev = "0123456789abcdef0123456789abcdef01234567"
 
 ["*.rs"]
 max_line_length = 100
 ```
 
-Replace the example URL and commit ID with your repository and a full commit ID. Git must be
-installed for the first fetch. Branch names, tags and abbreviated IDs are rejected. To update
-shared settings, change `rev` and run `toolconfig generate`; restore the previous ID to roll back.
+Replace the example URL and commit ID with your repository and a full commit ID.
+Git must be installed for the first fetch. Branch names, tags and abbreviated
+IDs are rejected. To update shared settings, change `rev` and run
+`toolconfig generate`; restore the previous ID to roll back.
 
-Omit `path` to use the repository root's single ToolConfig source, or select a source with
-`path = "presets/rust/.toolconfig.toml"`. All four source filenames are supported. ToolConfig
-loads that source and its imports; it does not discover other configurations in the repository.
-Symlinks and submodules are not materialized, and repository hooks and checkout filters do not run.
+Omit `path` to use the repository root's single ToolConfig source, or select a
+source with `path = "presets/rust/.toolconfig.toml"`. All four source filenames
+are supported. ToolConfig loads that source and its imports; it does not
+discover other configurations in the repository. Symlinks and submodules are not
+materialized, and repository hooks and checkout filters do not run.
 
-Imports apply depth first, in declaration order, followed by the consuming source. Imported
-sections retain their order, even when globs repeat. Native tables merge key by key; arrays
-replace earlier arrays. Standard properties retain EditorConfig's `unset` behavior.
+Imports apply depth first, in declaration order, followed by the consuming
+source. Imported sections retain their order, even when globs repeat. Native
+tables merge key by key; arrays replace earlier arrays. Standard properties
+retain EditorConfig's `unset` behavior.
 
-An omitted `tools` or tool `skip` list inherits the earlier list. An explicit list replaces it;
-`tools = []` disables inherited tools and `skip = []` clears inherited skips. Tool `format` and
-`path` settings override individual fields. Custom files inherit by label; a later definition
-replaces that label's complete `path`, `format`, `config` and `committed` specification.
+An omitted `tools` or tool `skip` list inherits the earlier list. An explicit
+list replaces it; `tools = []` disables inherited tools and `skip = []` clears
+inherited skips. Tool `format` and `path` settings override individual fields.
+Custom files inherit by label; a later definition replaces that label's complete
+`path`, `format`, `config` and `committed` specification.
 
-Globs and generated paths apply relative to the consuming source's directory. Only its `root`
-setting controls the project boundary. Pkl relative imports still resolve beside the fetched
-Pkl source; `TOOLCONFIG_SOURCE_DIR` points there and `TOOLCONFIG_ROOT_DIR` identifies the consumer's
-project. Imported Pkl has the same filesystem, environment and network access as local Pkl: use
-repositories you trust. `toolconfig explain` identifies the repository, commit and source of
-inherited options.
+Globs and generated paths apply relative to the consuming source's directory.
+Only its `root` setting controls the project boundary. Pkl relative imports
+still resolve beside the fetched Pkl source; `TOOLCONFIG_SOURCE_DIR` points
+there and `TOOLCONFIG_ROOT_DIR` identifies the consumer's project. Imported Pkl
+has the same filesystem, environment and network access as local Pkl: use
+repositories you trust. `toolconfig explain` identifies the repository, commit
+and source of inherited options.
 
-In Pkl, use the schema URI written by `toolconfig init --format pkl` and quote the `extends`
-keyword with backticks:
+In Pkl, use the schema URI written by `toolconfig init --format pkl` and quote
+the `extends` keyword with backticks:
 
 ```pkl
 toolconfig {
@@ -242,39 +260,43 @@ toolconfig {
 }
 ```
 
-The new Pkl schema uses `null` for omitted `tools` and `skip` lists. Explicit `List()` clears an
-inherited list. Existing pinned schemas retain their empty-list defaults; update the schema URI
-to use repository imports.
+The Pkl schema uses `null` for omitted `tools` and `skip` lists, and an
+explicit `List()` clears an inherited list. A schema URI that pins an older
+release keeps empty-list defaults; update it to use repository imports.
 
-Authentication comes from Git. Public HTTPS needs no login. Private HTTPS uses your Git
-credential helper; SSH URLs use your SSH configuration and agent, including `GIT_SSH_COMMAND`.
-In CI, configure a helper or SSH key with read access to the shared repository.
-[toolconfig-action](https://github.com/mathematic-inc/toolconfig-action) does this with a
-read-only GitHub App token. Test access with `git ls-remote <url>` without prompting.
-ToolConfig disables Git terminal prompts and times out Git commands after two minutes. Keep
-tokens out of URLs and sources; ToolConfig rejects embedded HTTPS credentials and suppresses
-Git's raw error output to avoid disclosing credentials.
+Authentication comes from Git. Public HTTPS needs no login. Private HTTPS uses
+your Git credential helper; SSH URLs use your SSH configuration and agent,
+including `GIT_SSH_COMMAND`. In CI, configure a helper or SSH key with read
+access to the shared repository.
+[toolconfig-action](https://github.com/mathematic-inc/toolconfig-action) does
+this with a read-only GitHub App token. Test access with `git ls-remote <url>`
+without prompting. ToolConfig disables Git terminal prompts and times out Git
+commands after two minutes. Keep tokens out of URLs and sources; ToolConfig
+rejects embedded HTTPS credentials and suppresses Git's raw error output to
+avoid disclosing credentials.
 
-Fetched commits are stored in the user's cache directory under `toolconfig/repos`. Set
-`TOOLCONFIG_REPO_CACHE_DIR` to choose another location; relative paths resolve from the project
-root. Once fetched, a commit loads without Git or reauthentication, including while offline.
-Pkl's own external dependencies still follow its existing cache and offline settings. Watch mode
-does not poll remotes. ToolConfig verifies cached contents and ignores cache activity when
-discovering sources or watching for changes. A damaged cache produces an error with the entry
-to remove before retrying. Fetch or parse failures leave existing generated files intact.
+Fetched commits are stored in the user's cache directory under
+`toolconfig/repos`. Set `TOOLCONFIG_REPO_CACHE_DIR` to choose another location;
+relative paths resolve from the project root. Once fetched, a commit loads
+without Git or reauthentication, including while offline. Pkl's own external
+dependencies still follow its existing cache and offline settings. Watch mode
+does not poll remotes. ToolConfig verifies cached contents and ignores cache
+activity when discovering sources or watching for changes. A damaged cache
+produces an error with the entry to remove before retrying. Fetch or parse
+failures leave existing generated files intact.
 
 ## How values reach each tool
 
-ToolConfig resolves the sections for one probe file per extension a tool handles, in the
-directory that enables it. Values that agree go at the top level of the native file. Values
-that differ by extension go into native `overrides` when the tool has them (prettier, oxfmt);
-otherwise generation fails and says which files disagree. A file without a value gets the
-tool's default.
+ToolConfig resolves the sections for one probe file per extension a tool
+handles, in the directory that enables it. Values that agree go at the top level
+of the native file. Values that differ by extension go into native `overrides`
+when the tool has them (prettier, oxfmt); otherwise generation fails and says
+which files disagree. A file without a value gets the tool's default.
 
-Sections that single out some files, such as `["src/legacy/**.rs"]` or `["**/test_*.py"]`, are
-checked with a concrete path from their glob. When they would change what a tool does, the
-error suggests listing the tool in a source in that directory, which gives it its own native
-file, or skipping the property.
+Sections that single out some files, such as `["src/legacy/**.rs"]` or
+`["**/test_*.py"]`, are checked with a concrete path from their glob. When they
+would change what a tool does, the error suggests listing the tool in a source
+in that directory, which gives it its own native file, or skipping the property.
 
 Setting the same native key twice is an error:
 
@@ -285,8 +307,8 @@ rustfmt.max_width is set twice for *.rs files
 help: change one of them, or add the property to [toolconfig.rustfmt] skip in .toolconfig.toml
 ```
 
-Generated files follow the EditorConfig properties at their own path, so formatters that read
-the same properties leave them unchanged.
+Generated files follow the EditorConfig properties at their own path, so
+formatters that read the same properties leave them unchanged.
 
 | Tool | Properties it receives | Native file |
 | --- | --- | --- |
@@ -306,19 +328,21 @@ the same properties leave them unchanged.
 
 shfmt and ktlint read `.editorconfig` themselves; write their keys in sections.
 
-golangci-lint's `lll` is on when `linters.enable` names it, or `linters.default` is `all` or
-`fast`, and `linters.disable` does not name it. shellcheck's `.shellcheckrc` applies to every
-script beneath it, so its options go in `["*"]`; an array repeats its key, as in
-`source-path = ["SCRIPTDIR", "lib"]`. tflint's `.tflint.hcl` is written as HCL reads its JSON
-form: `["*.tf".tflint.plugin.aws]` becomes `plugin "aws" { ... }`. ToolConfig knows which objects
-are blocks in tflint's own schema and its bundled terraform ruleset; for a plugin's nested block,
-such as `assume_role`, set `tflint.format = "json"` to write `.tflint.json`, which each plugin
-reads by its own schema.
+golangci-lint's `lll` is on when `linters.enable` names it, or `linters.default`
+is `all` or `fast`, and `linters.disable` does not name it. shellcheck's
+`.shellcheckrc` applies to every script beneath it, so its options go in
+`["*"]`; an array repeats its key, as in `source-path = ["SCRIPTDIR", "lib"]`.
+tflint's `.tflint.hcl` is written as HCL reads its JSON form:
+`["*.tf".tflint.plugin.aws]` becomes `plugin "aws" { ... }`. ToolConfig knows
+which objects are blocks from tflint's own schema and from the terraform
+ruleset that tflint bundles; for a plugin's nested block, such as `assume_role`,
+set `tflint.format = "json"` to write `.tflint.json`, which each plugin reads by
+its own schema.
 
 ## Vale
 
-Vale reads `.vale.ini` and a `StylesPath` folder of styles and vocabularies. ToolConfig writes the
-INI file from the `vale` table in `["*"]`:
+Vale reads `.vale.ini` and a `StylesPath` folder of styles and vocabularies.
+ToolConfig writes the INI file from the `vale` table in `["*"]`:
 
 ```toml
 root = true
@@ -340,19 +364,20 @@ BasedOnStyles = ["Vale", "Acme"]
 ```
 
 - Core settings go directly in the table.
-- A nested table is a section with the same name: `["*".vale."*.md"]` writes `[*.md]`, and
-  `["*".vale.formats]` writes `[formats]`.
-- `.vale.ini` applies to every file Vale checks, so every option goes in `["*"]`, as for
-  shellcheck. Vale reads the first `.vale.ini` from its working directory up, so enable vale in
-  one directory only.
-- A list is one comma-separated entry. ToolConfig writes a comma inside an item as `\,`, which is
-  how Vale reads a comma in a pattern.
-- Quote a key that has a dot, as in `"Vale.Spelling" = "NO"`. TOML reads an unquoted dot as a
-  nested table.
+- A nested table is a section with the same name: `["*".vale."*.md"]` writes
+  `[*.md]`, and `["*".vale.formats]` writes `[formats]`.
+- `.vale.ini` applies to every file Vale checks, so every option goes in
+  `["*"]`, as for shellcheck. Vale reads the first `.vale.ini` from its working
+  directory up, so enable vale in one directory only.
+- A list is one comma-separated entry. ToolConfig writes a comma inside an item
+  as `\,`, which is how Vale reads a comma in a pattern.
+- Quote a key that has a dot, as in `"Vale.Spelling" = "NO"`. TOML reads an
+  unquoted dot as a nested table.
 
-Styles and vocabularies are plain files, and a `files` output can write them. A shared repository
-can write them into every project that extends it. This block of its `.toolconfig.pkl` writes the
-rule files of the `styles` folder and one vocabulary:
+Styles and vocabularies are plain files, and a `files` output can write them. A
+shared repository can write them into every project that extends it. This block
+of its `.toolconfig.pkl` writes the rule files of the `styles` folder and one
+vocabulary:
 
 ```pkl
 toolconfig {
@@ -395,52 +420,55 @@ toolconfig [--root DIR] clean
 | `explain` | Every generated key, its value and the source line it came from |
 | `clean` | Remove generated files that are unchanged since ToolConfig wrote them |
 
-`--strict` turns warnings, such as unused tool tables or values a tool table repeats, into
-errors.
+`--strict` turns warnings, such as unused tool tables or values a tool table
+repeats, into errors.
 
 ## Ownership
 
-ToolConfig only writes files it owns. `.toolconfig.lock`, a TOML file beside the root source,
-records each generated path, relative to the root, with the hash of the bytes last written.
-Commit it: it carries no machine-specific data, and a fresh clone needs it to recognize the
-committed files, such as `.editorconfig`. Ignored files missing from a clone are simply generated
-again.
+ToolConfig only writes files it owns. `.toolconfig.lock`, a TOML file beside the
+root source, records each generated path, relative to the root, with the hash of
+the bytes last written. Commit it: it carries no machine-specific data, and a
+fresh clone needs it to recognize the committed files, such as `.editorconfig`.
+Ignored files missing from a clone are simply generated again.
 
-ToolConfig refuses to overwrite hand-written files, files edited after generation, symlinks,
-and native files that compete with a generated one (`.prettierrc.yaml` beside a generated
-`.prettierrc.json`, or a `prettier` key in `package.json`). It compiles and checks every output
-before writing any, stages each change beside its destination, and replaces files atomically
-under a journal that the next run recovers if a run is interrupted. Only one ToolConfig writer
-runs per project at a time, so `generate` refuses to start while watch mode is running. The
-writer lock and the journal are local to the machine and live outside the project, in
-`toolconfig/projects` under the user's state directory (`~/.local/state` on Linux,
-`~/Library/Application Support` on macOS, `%LOCALAPPDATA%` on Windows). Set
-`TOOLCONFIG_STATE_DIR` to choose another location outside the project.
-
-Releases before 2026.11.4 kept the records in `.toolconfig-state/state.json`. The first
-`generate`, `clean` or `init` of 2026.11.4 or later moves them to `.toolconfig.lock` and removes
-the directory; commit both changes.
+ToolConfig refuses to overwrite hand-written files, files edited after
+generation, symlinks, and native files that compete with a generated one
+(`.prettierrc.yaml` beside a generated `.prettierrc.json`, or a `prettier` key
+in `package.json`). It compiles and checks every output before writing any,
+stages each change beside its destination, and replaces files atomically under a
+journal that the next run recovers if a run is interrupted. Only one ToolConfig
+writer runs per project at a time, so `generate` refuses to start while watch
+mode is running. The writer lock and the journal are local to the machine and
+live outside the project, in `toolconfig/projects` under the user's state
+directory (`~/.local/state` on Linux, `~/Library/Application Support` on macOS,
+`%LOCALAPPDATA%` on Windows). Set `TOOLCONFIG_STATE_DIR` to choose another
+location outside the project.
 
 ## Adopting ToolConfig
 
-There is no importer. Converting a repository is a one-time job that an AI assistant handles
-well; [docs/adopting.md](docs/adopting.md) is written for both people and assistants.
+There is no importer. Converting a repository is a one-time job that an AI
+assistant handles well; [docs/adopting.md](docs/adopting.md) is written for both
+people and assistants.
 
 ## Development
 
 ```sh
-cargo run -- generate
-cargo fmt --check
-cargo clippy --all-targets -- -D warnings
+mise install
+mise run generate
+mise run check
 cargo test --locked
 python tests/native/run.py --toolconfig target/debug/toolconfig
 ```
 
-The native suite runs rustfmt, ruff, prettier, oxfmt, tombi, yamllint, ryl, sqlfluff,
-golangci-lint, tflint, shellcheck and vale against generated configuration; `mise install`
-provides them. After changing the catalog, refresh the schema with
-`cargo run -- schema > schema/toolconfig.schema.json`.
-Releases are described in [docs/releasing.md](docs/releasing.md).
+`mise run generate` writes the tool configuration with the ToolConfig that
+`cargo run` builds. `mise run check` runs every check of the organization with
+hk, and `mise run fix` applies the fixes that the tools can make.
+
+The native suite runs rustfmt, ruff, prettier, oxfmt, tombi, yamllint, ryl,
+sqlfluff, golangci-lint, tflint, shellcheck and vale against generated
+configuration; `mise install` provides them. After changing the catalog, refresh
+the schema with `cargo run -- schema > schema/toolconfig.schema.json`. Releases
+are described in [docs/releasing.md](docs/releasing.md).
 
 ## License
 

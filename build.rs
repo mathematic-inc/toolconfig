@@ -1,4 +1,7 @@
+//! Builds the Pkl package that the binary embeds.
+
 use sha2::{Digest, Sha256};
+use std::fmt::Write as _;
 use std::io::Write;
 use std::path::PathBuf;
 
@@ -53,19 +56,24 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 fn hex(bytes: &[u8]) -> String {
-    bytes.iter().map(|byte| format!("{byte:02x}")).collect()
+    bytes.iter().fold(String::new(), |mut digits, byte| {
+        let _ = write!(digits, "{byte:02x}");
+        digits
+    })
 }
 
 fn pkl_module(ids: &[String]) -> String {
     let mut settings = String::new();
     let mut tables = String::new();
     for id in ids {
-        settings.push_str(&format!(
+        let _ = write!(
+            settings,
             "  /// How {id} is generated.\n  `{id}`: ToolSettings = new {{}}\n"
-        ));
-        tables.push_str(&format!(
+        );
+        let _ = write!(
+            tables,
             "  /// Native {id} options for the files this section matches.\n  `{id}`: Dynamic = new {{}}\n"
-        ));
+        );
     }
     format!(
         r#"/// ToolConfig sources: EditorConfig sections with native options for each tool.

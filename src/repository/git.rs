@@ -1,5 +1,6 @@
 use std::ffi::OsStr;
 use std::fs::File;
+use std::io::{Read, Seek};
 use std::path::Path;
 use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
@@ -14,10 +15,8 @@ const POLL_INTERVAL: Duration = Duration::from_millis(20);
 pub(super) fn read(directory: &Path, args: &[&OsStr]) -> Result<Vec<u8>> {
     let output = tempfile::tempfile().context("cannot stage Git output")?;
     run(directory, args, output.try_clone()?)?;
-    use std::io::Read;
     let mut bytes = Vec::new();
     let mut output = output;
-    use std::io::Seek;
     output.rewind()?;
     output.read_to_end(&mut bytes)?;
     Ok(bytes)
@@ -71,7 +70,7 @@ pub(super) fn run(directory: &Path, args: &[&OsStr], output: File) -> Result<()>
             Ok(Some(_)) => bail!(
                 "Git failed; check repository access, the commit ID, and your Git credential helper or SSH configuration"
             ),
-            Err(error) if error.kind() == std::io::ErrorKind::Interrupted => continue,
+            Err(error) if error.kind() == std::io::ErrorKind::Interrupted => {}
             Ok(None) if start.elapsed() < COMMAND_TIMEOUT => std::thread::sleep(POLL_INTERVAL),
             result => {
                 let _ = child.kill();

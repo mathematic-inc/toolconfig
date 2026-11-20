@@ -92,10 +92,9 @@ pub(crate) fn evaluate(path: &Path, root: &Path) -> (Result<Source>, Inputs) {
         let value = Value::from_pkl(&raw, "module")?;
         convert(path, dir, &value)
     })();
-    let inputs = match recorded.lock() {
-        Ok(inputs) => inputs.clone(),
-        Err(_) => Inputs::default(),
-    };
+    let inputs = recorded
+        .lock()
+        .map_or_else(|_| Inputs::default(), |inputs| inputs.clone());
     (source, inputs)
 }
 
@@ -284,6 +283,7 @@ impl Tracking {
         if let Ok(real) = path.canonicalize() {
             inputs.files.insert(real, hash);
         }
+        drop(inputs);
         Ok(())
     }
 }
@@ -362,6 +362,7 @@ impl EvalCapabilities for Tracking {
         recorded
             .globs
             .insert((base.to_path_buf(), pattern.to_owned()), paths.clone());
+        drop(recorded);
         Ok(paths)
     }
 }

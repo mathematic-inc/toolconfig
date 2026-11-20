@@ -77,24 +77,23 @@ pub(crate) fn fetch(repository: &Repository, root: &Path, inputs: &mut Inputs) -
             destination.display()
         )
     })?;
-    let path = match repository.path() {
-        Some(path) => path.to_owned(),
-        None => {
-            let sources = SOURCE_NAMES
-                .iter()
-                .filter(|name| manifest.files.contains_key(**name))
-                .collect::<Vec<_>>();
-            match sources.as_slice() {
-                [name] => (*name).to_string(),
-                [] => bail!(
-                    "{} has no ToolConfig source at its root; specify path",
-                    repository.name()
-                ),
-                _ => bail!(
-                    "{} has multiple ToolConfig sources at its root; specify path",
-                    repository.name()
-                ),
-            }
+    let path = if let Some(path) = repository.path() {
+        path.to_owned()
+    } else {
+        let sources = SOURCE_NAMES
+            .iter()
+            .filter(|name| manifest.files.contains_key(**name))
+            .collect::<Vec<_>>();
+        match sources.as_slice() {
+            [name] => (*name).to_string(),
+            [] => bail!(
+                "{} has no ToolConfig source at its root; specify path",
+                repository.name()
+            ),
+            _ => bail!(
+                "{} has multiple ToolConfig sources at its root; specify path",
+                repository.name()
+            ),
         }
     };
     if !manifest.files.contains_key(&path) {
@@ -115,7 +114,7 @@ fn acquire(lock: &File) -> Result<()> {
     loop {
         match fs2::FileExt::try_lock_exclusive(lock) {
             Ok(()) => return Ok(()),
-            Err(error) if error.kind() == std::io::ErrorKind::Interrupted => continue,
+            Err(error) if error.kind() == std::io::ErrorKind::Interrupted => {}
             Err(error)
                 if error.raw_os_error() == fs2::lock_contended_error().raw_os_error()
                     && start.elapsed() < LOCK_TIMEOUT =>

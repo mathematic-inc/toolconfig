@@ -2,20 +2,45 @@
 all_compile = false
 
 [tools]
-"aqua:EmbarkStudios/cargo-deny" = "0.20.2"
+"aqua:EmbarkStudios/cargo-deny" = "0.21.0"
+"aqua:apple/pkl" = "0.33.1"
 "aqua:owenlamont/ryl" = "0.30.0"
+"github:mongodb/kingfisher" = "2.19.1"
+"npm:prettier" = "3.9.10"
+"pipx:sqlfluff" = "4.5.0"
 cargo-binstall = "1.26.2"
+ghalint = "1.6.0"
+gitleaks = "8.30.1"
 go = "1.27.3"
 golangci-lint = "2.15.0"
-node = "26.13.0"
-"npm:prettier" = "3.9.10"
-oxfmt = "0.77.0"
-"pipx:sqlfluff" = "4.5.0"
+harper-cli = "3.3.0"
+hk = "2.13.0"
+jactionlint = "2.6.0"
+lychee = "0.24.2"
+node = "26.13.1"
+oxfmt = "0.79.0"
+pinact = "5.0.2"
 python = "3.15.2"
-ruff = "0.17.4"
-rust = { version = "1.99.1", profile = "minimal", components = "clippy,rustfmt" }
+ruff = "0.17.5"
+rumdl = "0.3.5"
+rust = { version = "1.100.0", profile = "minimal", components = "clippy,rustfmt" }
 shellcheck = "0.11.0"
 tflint = "0.65.0"
-tombi = "1.10.0"
+tombi = "1.11.3"
+ty = "0.0.107"
+typos = "1.52.2"
 uv = "0.13.7"
 vale = "3.26.0"
+zizmor = "1.32.0"
+
+[tasks.generate]
+description = "Write the tool configuration with the built ToolConfig"
+run = "cargo run --quiet -- generate --strict"
+
+[tasks.fix]
+description = "Fix every file that a tool can fix"
+run = "hk fix --all --slow"
+
+[tasks.check]
+description = "Check every file"
+run = "hk check --all --slow"

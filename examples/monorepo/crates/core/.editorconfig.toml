@@ -1,4 +1,5 @@
 #:schema ../../../../schema/toolconfig.schema.json
+
 [toolconfig]
 tools = ["rustfmt"]
 

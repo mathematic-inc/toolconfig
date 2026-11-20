@@ -37,7 +37,7 @@ impl GitHttp {
                 match listener.accept() {
                     Ok((stream, _)) => serve(stream, &root, expected.as_deref(), &auth),
                     Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => {
-                        std::thread::sleep(Duration::from_millis(10))
+                        std::thread::sleep(Duration::from_millis(10));
                     }
                     Err(error) => panic!("fixture listener: {error}"),
                 }
@@ -126,40 +126,15 @@ fn serve(mut stream: TcpStream, root: &Path, expected: Option<&str>, authenticat
         assert!(read > 0, "fixture request ended early");
         request.extend_from_slice(&buffer[..read]);
     }
-    let mut child = Command::new("git")
-        .arg("http-backend")
-        .current_dir(root)
-        .env("GIT_PROJECT_ROOT", root)
-        .env("GIT_HTTP_EXPORT_ALL", "1")
-        .env("PATH_INFO", path)
-        .env("QUERY_STRING", query)
-        .env("REQUEST_METHOD", method)
-        .env(
-            "CONTENT_TYPE",
-            fields.get("content-type").copied().unwrap_or(""),
-        )
-        .env("CONTENT_LENGTH", length.to_string())
-        .env("REMOTE_USER", "reader")
-        .env("GIT_CONFIG_GLOBAL", root.join("gitconfig"))
-        .env("GIT_CONFIG_NOSYSTEM", "1")
-        .env_remove("GIT_DIR")
-        .env_remove("GIT_WORK_TREE")
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()
-        .unwrap();
-    child
-        .stdin
-        .take()
-        .unwrap()
-        .write_all(&request[header_end..header_end + length])
-        .unwrap();
-    let output = child.wait_with_output().unwrap();
-    assert!(
-        output.status.success(),
-        "git http-backend: {}",
-        String::from_utf8_lossy(&output.stderr)
+    let output = backend(
+        root,
+        &Request {
+            method,
+            path,
+            query,
+            content_type: fields.get("content-type").copied().unwrap_or(""),
+            body: &request[header_end..header_end + length],
+        },
     );
     let split = output
         .stdout
@@ -183,4 +158,44 @@ fn serve(mut stream: TcpStream, root: &Path, expected: Option<&str>, authenticat
     }
     stream.write_all(b"\r\n").unwrap();
     stream.write_all(body).unwrap();
+}
+
+struct Request<'a> {
+    method: &'a str,
+    path: &'a str,
+    query: &'a str,
+    content_type: &'a str,
+    body: &'a [u8],
+}
+
+/// Runs `git http-backend` for one request, as a CGI program.
+fn backend(root: &Path, request: &Request<'_>) -> std::process::Output {
+    let mut child = Command::new("git")
+        .arg("http-backend")
+        .current_dir(root)
+        .env("GIT_PROJECT_ROOT", root)
+        .env("GIT_HTTP_EXPORT_ALL", "1")
+        .env("PATH_INFO", request.path)
+        .env("QUERY_STRING", request.query)
+        .env("REQUEST_METHOD", request.method)
+        .env("CONTENT_TYPE", request.content_type)
+        .env("CONTENT_LENGTH", request.body.len().to_string())
+        .env("REMOTE_USER", "reader")
+        .env("GIT_CONFIG_GLOBAL", root.join("gitconfig"))
+        .env("GIT_CONFIG_NOSYSTEM", "1")
+        .env_remove("GIT_DIR")
+        .env_remove("GIT_WORK_TREE")
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .unwrap();
+    child.stdin.take().unwrap().write_all(request.body).unwrap();
+    let output = child.wait_with_output().unwrap();
+    assert!(
+        output.status.success(),
+        "git http-backend: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    output
 }

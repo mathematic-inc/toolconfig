@@ -38,7 +38,6 @@ pub(crate) struct Builtin {
     pub(crate) hcl: Option<Hcl>,
 }
 
-/// How a normalized EditorConfig property becomes a native key.
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub(crate) struct Mapping {
@@ -100,7 +99,7 @@ pub(crate) struct Hcl {
     pub(crate) attributes: Vec<Vec<String>>,
 }
 
-fn nearest() -> bool {
+const fn nearest() -> bool {
     true
 }
 
@@ -168,7 +167,12 @@ mod tests {
                     builtin.id,
                     mapping.property
                 );
-                assert!(!mapping.path.is_empty());
+                assert!(
+                    !mapping.path.is_empty(),
+                    "{}: {} has no native path",
+                    builtin.id,
+                    mapping.property
+                );
                 if let Some(when) = &mapping.when {
                     assert!(!when.item.is_empty(), "{}", builtin.id);
                     for path in [&when.enable, &when.disable, &when.set] {

@@ -1,4 +1,4 @@
-//! EditorConfig resolution over sources: closer files win, later sections win, `unset` clears.
+//! `EditorConfig` resolution over sources: closer files win, later sections win, `unset` clears.
 
 use std::collections::BTreeMap;
 use std::path::Path;
@@ -22,7 +22,6 @@ impl Provenance {
 
 #[derive(Clone, Debug)]
 pub(crate) struct Resolution {
-    /// The value as EditorConfig spells it.
     pub(crate) value: String,
     pub(crate) provenance: Provenance,
 }

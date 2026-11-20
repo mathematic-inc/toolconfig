@@ -1,5 +1,6 @@
 //! The command workflows and their shared compilation path.
 
+use std::io::Write;
 use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result, bail};
@@ -71,7 +72,7 @@ enum Command {
         #[arg(long, value_name = "DIR")]
         dir: Option<PathBuf>,
     },
-    /// Remove generated files that are unchanged since ToolConfig wrote them.
+    /// Remove generated files that are unchanged since they were generated.
     Clean,
     /// Print the JSON Schema for TOML sources.
     #[command(hide = true)]
@@ -212,7 +213,6 @@ fn init(
             let mut file = tempfile::Builder::new()
                 .prefix(compiler::STAGE_PREFIX)
                 .tempfile_in(&dir)?;
-            use std::io::Write;
             file.write_all(text.as_bytes())?;
             file.as_file().sync_all()?;
             file.persist_noclobber(&path)
@@ -329,8 +329,7 @@ fn explain(requested: Option<&Path>, tool: Option<&str>, dir: Option<&Path>) -> 
             let scope = entry
                 .files
                 .as_ref()
-                .map(|files| format!(" (override for {files})"))
-                .unwrap_or_default();
+                .map_or_default(|files| format!(" (override for {files})"));
             println!(
                 "  {:width$}  {:value_width$}  {}{scope}",
                 entry.key, entry.value, entry.from

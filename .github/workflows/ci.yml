@@ -42,22 +42,18 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          fetch-depth: 0
           persist-credentials: false
       - uses: jdx/mise-action@b44d12e7d0d8ee7461bb893e1b1993500433185b # v5.2.7
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
       - name: Build
         run: cargo build --locked
-      # Check before generate, because generate rewrites a stale committed file.
-      - name: Check this repository's own generated files
-        run: target/debug/toolconfig check --strict
-      - name: Generate this repository's tool configuration
-        run: target/debug/toolconfig generate --strict
-      - name: Format
-        run: cargo fmt --check
-      - name: Lint
-        run: cargo clippy --locked --all-targets -- -D warnings
-      - name: Audit dependencies
-        run: cargo-deny --locked check
+      - name: Put the built ToolConfig on PATH
+        run: echo "$GITHUB_WORKSPACE/target/debug" >> "$GITHUB_PATH"
+      - name: Check and generate the ToolConfig files
+        uses: mathematic-inc/toolconfig-action@1baf7b021e8bf6f0e20737753c13af0fc93c8570 # v2026.11.0
+      - name: Run hk
+        run: hk check --all --slow --skip-step toolconfig
       - name: Test
         run: cargo test --locked --all-targets
       - name: Run real tools against generated configuration

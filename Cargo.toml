@@ -4,11 +4,12 @@ version = "2026.11.6"
 edition = "2024"
 rust-version = "1.98"
 description = "EditorConfig, extended to your tools: generate .editorconfig and native tool configuration from TOML or Pkl"
-license = "MIT"
-repository = "https://github.com/mathematic-inc/toolconfig"
-categories = ["command-line-utilities", "development-tools"]
-keywords = ["editorconfig", "configuration", "formatter", "linter", "cli"]
 readme = "README.md"
+repository = "https://github.com/mathematic-inc/toolconfig"
+license = "MIT"
+keywords = ["cli", "configuration", "editorconfig", "formatter", "linter"]
+categories = ["command-line-utilities", "development-tools"]
+build = "build.rs"
 include = [
   "Cargo.lock",
   "Cargo.toml",
@@ -20,7 +21,6 @@ include = [
   "schema/**",
   "src/**",
 ]
-build = "build.rs"
 
 [package.metadata.binstall]
 pkg-url = "{ repo }/releases/download/v{ version }/toolconfig-{ version }-{ target }.tar.gz"
@@ -70,8 +70,17 @@ zip = { version = "9.4.1", default-features = false, features = ["deflate"] }
 [target."cfg(windows)".dependencies]
 windows-sys = { version = "0.61.2", features = ["Win32_Foundation", "Win32_Storage_FileSystem"] }
 
+[lints.clippy]
+all = { level = "deny", priority = -1 }
+nursery = { level = "deny", priority = -1 }
+pedantic = { level = "deny", priority = -1 }
+redundant_pub_crate = "allow"
+
 [lints.rust]
-unreachable_pub = "warn"
+missing_debug_implementations = "deny"
+missing_docs = "deny"
+rust_2018_idioms = { level = "deny", priority = -1 }
+unreachable_pub = "deny"
 
 [profile.release]
 strip = "debuginfo"

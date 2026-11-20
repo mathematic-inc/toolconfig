@@ -1,0 +1,44 @@
+amends
+  "package://github.com/mathematic-inc/toolconfig/releases/download/v2026.11.6/toolconfig@2026.11.6#/ToolConfig.pkl"
+
+root = true
+
+toolconfig {
+  `extends` =
+    List(new Repository {
+      git = "https://github.com/mathematic-inc/toolconfig-config.git"
+      rev = "fc76ddad46c14a7b7fe03bf117a92ede11ea0dfb"
+      path = "profiles/org/.toolconfig.pkl"
+    })
+}
+
+sections {
+  ["*"] {
+    // The tests check that ToolConfig reads a misspelled word that a source allows.
+    typos { ["default"] { ["extend-words"] { ["teh"] = "teh" } } }
+    `cargo-deny` {
+      // These dependencies use licenses outside the organization's list.
+      licenses {
+        exceptions {
+          new { crate = "aws-lc-rs"; allow = List("ISC") }
+          new { crate = "aws-lc-sys"; allow = List("BSD-3-Clause", "ISC") }
+          new { crate = "inotify"; allow = List("ISC") }
+          new { crate = "inotify-sys"; allow = List("ISC") }
+          new { crate = "notify"; allow = List("CC0-1.0") }
+          new { crate = "option-ext"; allow = List("MPL-2.0") }
+          new { crate = "rustls-webpki"; allow = List("ISC") }
+          new { crate = "subtle"; allow = List("BSD-3-Clause") }
+          new { crate = "untrusted"; allow = List("ISC") }
+          new { crate = "webpki-root-certs"; allow = List("CDLA-Permissive-2.0") }
+          new { crate = "webpki-roots"; allow = List("CDLA-Permissive-2.0") }
+        }
+      }
+    }
+  }
+  ["*.{py,pyi}"] { ruff { ["target-version"] = "py312" } }
+  // insta compares snapshot files byte for byte.
+  ["*.snap"] {
+    trim_trailing_whitespace = false
+    insert_final_newline = "unset"
+  }
+}
