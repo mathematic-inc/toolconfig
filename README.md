@@ -86,8 +86,8 @@ select = ["E", "F", "I"]
 Tools and editor extensions read these files through their normal discovery, so nothing else
 changes. Generated tool files are gitignored by default, so run `toolconfig generate` after
 cloning, in a pre-commit hook or task runner, and in CI before the tools run. Commit the source,
-`.editorconfig` and `.toolconfig-state/state.json`: editors and other programs read `.editorconfig`
-directly, and the state file lets a fresh clone keep owning it.
+`.editorconfig` and `.toolconfig.lock`: editors and other programs read `.editorconfig`
+directly, and the lockfile lets a fresh clone keep owning it.
 
 ## Installation
 
@@ -387,16 +387,25 @@ errors.
 
 ## Ownership
 
-ToolConfig only writes files it owns. `.toolconfig-state/state.json` records each generated
-path, relative to the root, with the hash of the bytes last written. Commit it: it carries no
-machine-specific data, and a fresh clone needs it to recognize the committed `.editorconfig`.
-Ignored files missing from a clone are simply generated again.
+ToolConfig only writes files it owns. `.toolconfig.lock`, a TOML file beside the root source,
+records each generated path, relative to the root, with the hash of the bytes last written.
+Commit it: it carries no machine-specific data, and a fresh clone needs it to recognize the
+committed `.editorconfig`. Ignored files missing from a clone are simply generated again.
 
 ToolConfig refuses to overwrite hand-written files, files edited after generation, symlinks,
 and native files that compete with a generated one (`.prettierrc.yaml` beside a generated
 `.prettierrc.json`, or a `prettier` key in `package.json`). It compiles and checks every output
 before writing any, stages each change beside its destination, and replaces files atomically
-under a journal that the next run recovers if a run is interrupted.
+under a journal that the next run recovers if a run is interrupted. Only one ToolConfig writer
+runs per project at a time, so `generate` refuses to start while watch mode is running. The
+writer lock and the journal are local to the machine and live outside the project, in
+`toolconfig/projects` under the user's state directory (`~/.local/state` on Linux,
+`~/Library/Application Support` on macOS, `%LOCALAPPDATA%` on Windows). Set
+`TOOLCONFIG_STATE_DIR` to choose another location outside the project.
+
+Earlier releases kept the records in `.toolconfig-state/state.json`. The first `generate`,
+`clean` or `init` of this release moves them to `.toolconfig.lock` and removes the directory;
+commit both changes.
 
 ## Adopting ToolConfig
 

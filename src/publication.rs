@@ -1,7 +1,8 @@
 //! Journaled publication of owned files and recovery of interrupted generations.
 //!
 //! Ownership records use paths relative to the project root and contain no machine-specific
-//! data, so `.toolconfig-state/state.json` can be committed beside the generated files.
+//! data, so `.toolconfig.lock` can be committed beside the generated files. The writer lock and
+//! the publication journal are machine-specific and live in a per-machine directory instead.
 
 mod identity;
 
@@ -19,12 +20,12 @@ use crate::compiler::{Plan, STAGE_PREFIX};
 use crate::ignore;
 use crate::inputs::digest;
 use crate::model::ADOPTING_GUIDE;
-use crate::paths::{self, STATE_DIR};
+use crate::paths::{self, LEGACY_STATE_DIR, LOCKFILE};
 use identity::Identity;
 
 const STATE_VERSION: u32 = 1;
-const STATE_GITIGNORE: &str =
-    "# Written by ToolConfig. Commit state.json; the rest is local.\n*\n!.gitignore\n!state.json\n";
+const LOCKFILE_HEADER: &str = "# Written by ToolConfig. Commit this file and do not edit it.\n\n";
+const STATE_DIR_ENV: &str = "TOOLCONFIG_STATE_DIR";
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
@@ -96,23 +97,22 @@ struct Journal {
 #[must_use = "keep the project lease alive until the operation completes"]
 pub(crate) struct Project {
     root: PathBuf,
-    state_dir: PathBuf,
+    /// Per-machine directory holding the writer lock and the publication journal.
+    machine: PathBuf,
     lock: File,
 }
 
 impl Project {
     pub(crate) fn acquire(root: &Path) -> Result<Self> {
         check_ancestors(root)?;
-        let state_dir = root.join(STATE_DIR);
-        check_ancestors(&state_dir)?;
-        std::fs::create_dir_all(&state_dir)
-            .with_context(|| format!("cannot create {}", state_dir.display()))?;
-        let ignore_path = state_dir.join(".gitignore");
-        reject_nonregular(&ignore_path)?;
-        if std::fs::read(&ignore_path).ok().as_deref() != Some(STATE_GITIGNORE.as_bytes()) {
-            write_file(&ignore_path, STATE_GITIGNORE.as_bytes(), 0o644)?;
-        }
-        let lock_path = state_dir.join("write.lock");
+        let machine = machine_dir(root)?;
+        private_directory(&machine)?;
+        // Resolve links above the directory, such as a symlinked home, once; check_ancestors
+        // then guards the journal paths below it.
+        let machine = machine
+            .canonicalize()
+            .with_context(|| format!("cannot resolve {}", machine.display()))?;
+        let lock_path = machine.join("writer.lock");
         reject_nonregular(&lock_path)?;
         let lock = OpenOptions::new()
             .create(true)
@@ -126,11 +126,71 @@ impl Project {
         )?;
         let project = Self {
             root: root.to_path_buf(),
-            state_dir,
+            machine,
             lock,
         };
+        project.adopt_legacy_journal()?;
         project.recover()?;
+        project.migrate_legacy_state()?;
         Ok(project)
+    }
+
+    fn journal_path(&self) -> PathBuf {
+        self.machine.join("journal.json")
+    }
+
+    /// Moves a journal an earlier release left in the project so `recover` can finish it.
+    fn adopt_legacy_journal(&self) -> Result<()> {
+        let legacy = self.root.join(LEGACY_STATE_DIR).join("journal.json");
+        check_ancestors(&legacy)?;
+        reject_nonregular(&legacy)?;
+        if !legacy.try_exists()? {
+            return Ok(());
+        }
+        let journal = self.journal_path();
+        reject_nonregular(&journal)?;
+        if journal.try_exists()? {
+            bail!(
+                "two interrupted publications need recovery: {} and {}; preserving both",
+                legacy.display(),
+                journal.display()
+            );
+        }
+        write_file(&journal, &std::fs::read(&legacy)?, 0o600)?;
+        std::fs::remove_file(&legacy)?;
+        sync_parent(&legacy)?;
+        Ok(())
+    }
+
+    /// Replaces the `.toolconfig-state` directory of earlier releases with `.toolconfig.lock`.
+    fn migrate_legacy_state(&self) -> Result<()> {
+        let legacy = self.root.join(LEGACY_STATE_DIR);
+        check_ancestors(&legacy)?;
+        let records = legacy.join("state.json");
+        reject_nonregular(&records)?;
+        if records.try_exists()? {
+            let lockfile = self.root.join(LOCKFILE);
+            reject_nonregular(&lockfile)?;
+            if !lockfile.try_exists()? {
+                write_state(&self.root, &read_legacy_state(&self.root, &records)?)?;
+            }
+            std::fs::remove_file(&records)?;
+            eprintln!(
+                "toolconfig: moved ownership records from {LEGACY_STATE_DIR}/state.json to {LOCKFILE}; commit both changes"
+            );
+        }
+        for name in [".gitignore", "write.lock"] {
+            let path = legacy.join(name);
+            reject_nonregular(&path)?;
+            if path.try_exists()? {
+                std::fs::remove_file(&path)?;
+            }
+        }
+        // Anything else in the directory was not written by ToolConfig; leave it.
+        if legacy.is_dir() && std::fs::read_dir(&legacy)?.next().is_none() {
+            std::fs::remove_dir(&legacy)?;
+        }
+        Ok(())
     }
 
     fn state(&self) -> Result<State> {
@@ -250,10 +310,11 @@ impl Project {
         state: State,
         changes: Vec<(PathBuf, Option<Snapshot>, Option<Vec<u8>>)>,
     ) -> Result<()> {
-        if self.state_dir.join("journal.json").try_exists()? {
+        let journal_path = self.journal_path();
+        if journal_path.try_exists()? {
             bail!("a previous publication must be recovered before writing");
         }
-        let state_path = self.state_dir.join("state.json");
+        let state_path = self.root.join(LOCKFILE);
         if changes.is_empty() {
             let unchanged = if state_path.exists() {
                 self.state()?.outputs == state.outputs
@@ -290,7 +351,6 @@ impl Project {
             generation: state.generation()?,
             changes: entries,
         };
-        let journal_path = self.state_dir.join("journal.json");
         write_json(&journal_path, &journal, 0o600)?;
         let result = (|| -> Result<()> {
             for (change, stage) in journal.changes.iter().zip(stages.iter_mut()) {
@@ -319,7 +379,7 @@ impl Project {
                 }
                 sync_parent(&change.path)?;
             }
-            write_json(&state_path, &state, 0o644)?;
+            write_state(&self.root, &state)?;
             std::fs::remove_file(&journal_path)?;
             sync_parent(&journal_path)?;
             Ok(())
@@ -336,7 +396,7 @@ impl Project {
     }
 
     fn recover(&self) -> Result<()> {
-        let journal_path = self.state_dir.join("journal.json");
+        let journal_path = self.journal_path();
         reject_nonregular(&journal_path)?;
         if !journal_path.try_exists()? {
             return Ok(());
@@ -354,7 +414,7 @@ impl Project {
                     .path
                     .components()
                     .any(|part| matches!(part, Component::ParentDir))
-                || change.path.starts_with(&self.state_dir)
+                || change.path == self.root.join(LOCKFILE)
                 || !destinations.insert(&change.path)
             {
                 bail!("invalid destination in publication journal; preserving all outputs");
@@ -464,11 +524,12 @@ fn ignored_outputs(plan: &Plan) -> Vec<PathBuf> {
 }
 
 pub(crate) fn validate(plan: &Plan) -> Result<()> {
-    if plan
-        .root
-        .join(STATE_DIR)
-        .join("journal.json")
-        .try_exists()?
+    if machine_dir(&plan.root)?.join("journal.json").try_exists()?
+        || plan
+            .root
+            .join(LEGACY_STATE_DIR)
+            .join("journal.json")
+            .try_exists()?
     {
         bail!("an interrupted publication needs recovery; run generate or clean");
     }
@@ -672,21 +733,71 @@ fn from_record_key(root: &Path, key: &str) -> Result<PathBuf> {
         }
         path.push(part);
     }
-    if path.starts_with(root.join(STATE_DIR)) {
+    if path == root.join(LOCKFILE) {
         bail!("invalid path in ownership state: {key:?}");
     }
     Ok(path)
 }
 
+/// The per-machine directory for a project's writer lock and publication journal.
+fn machine_dir(root: &Path) -> Result<PathBuf> {
+    let base = match std::env::var_os(STATE_DIR_ENV) {
+        Some(path) => paths::absolute(root, Path::new(&path))?,
+        None => dirs::state_dir()
+            .or_else(dirs::data_local_dir)
+            .map(|path| path.join("toolconfig"))
+            .with_context(|| {
+                format!("cannot find a directory for ToolConfig's local state; set {STATE_DIR_ENV}")
+            })?,
+    };
+    let real = base.canonicalize().unwrap_or_else(|_| base.clone());
+    if real.starts_with(root) {
+        bail!("{STATE_DIR_ENV} must not be inside the project; choose a separate directory");
+    }
+    let id = digest(root.as_os_str().as_encoded_bytes());
+    Ok(base.join("projects").join(&id[..32]))
+}
+
+fn private_directory(path: &Path) -> Result<()> {
+    let mut builder = std::fs::DirBuilder::new();
+    builder.recursive(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::DirBuilderExt;
+        builder.mode(0o700);
+    }
+    builder
+        .create(path)
+        .with_context(|| format!("cannot create {}", path.display()))
+}
+
 fn read_state(root: &Path) -> Result<State> {
-    let path = root.join(STATE_DIR).join("state.json");
+    let path = root.join(LOCKFILE);
     check_ancestors(&path)?;
     reject_nonregular(&path)?;
     if !path.try_exists()? {
+        // Read-only commands see a project that a writer has not migrated yet.
+        let legacy = root.join(LEGACY_STATE_DIR).join("state.json");
+        check_ancestors(&legacy)?;
+        reject_nonregular(&legacy)?;
+        if legacy.try_exists()? {
+            return read_legacy_state(root, &legacy);
+        }
         return Ok(State::empty());
     }
-    let state: State = serde_json::from_slice(&std::fs::read(&path)?)
+    let text = std::fs::read_to_string(&path).with_context(|| format!("cannot read {LOCKFILE}"))?;
+    let state: State = toml::from_str(&text)
+        .with_context(|| format!("cannot decode {LOCKFILE}; preserving all outputs"))?;
+    check_state(root, state)
+}
+
+fn read_legacy_state(root: &Path, path: &Path) -> Result<State> {
+    let state: State = serde_json::from_slice(&std::fs::read(path)?)
         .context("cannot decode ownership state; preserving all outputs")?;
+    check_state(root, state)
+}
+
+fn check_state(root: &Path, state: State) -> Result<State> {
     if state.version != STATE_VERSION {
         bail!("ownership state uses an unsupported version; preserving all outputs");
     }
@@ -767,6 +878,21 @@ fn write_file(path: &Path, bytes: &[u8], mode: u32) -> Result<()> {
         .with_context(|| format!("cannot update {}", path.display()))?;
     sync_parent(path)?;
     Ok(())
+}
+
+fn write_state(root: &Path, state: &State) -> Result<()> {
+    // One line per output keeps diffs and merge conflicts to the outputs that changed.
+    let mut document: toml_edit::DocumentMut = toml::to_string(state)?.parse()?;
+    if let Some(outputs) = document["outputs"].as_table_mut() {
+        for (mut key, record) in outputs.iter_mut() {
+            if let Some(table) = record.as_table() {
+                *record = toml_edit::value(table.clone().into_inline_table());
+                key.fmt();
+            }
+        }
+    }
+    let text = format!("{LOCKFILE_HEADER}{document}");
+    write_file(&root.join(LOCKFILE), text.as_bytes(), 0o644)
 }
 
 fn write_json(path: &Path, value: &impl Serialize, mode: u32) -> Result<()> {

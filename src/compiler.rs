@@ -189,7 +189,7 @@ fn check(
     alternatives: &[PathBuf],
     inputs: &Inputs,
 ) -> Result<()> {
-    let state = paths::key(&project.root.join(paths::STATE_DIR));
+    let lockfile = paths::key(&project.root.join(paths::LOCKFILE));
     let mut seen = BTreeMap::new();
     let keys = outputs
         .iter()
@@ -215,12 +215,8 @@ fn check(
         {
             bail!("{shown} collides with a ToolConfig source or input");
         }
-        if output
-            .path
-            .ancestors()
-            .any(|ancestor| paths::key(ancestor) == state)
-        {
-            bail!("{shown} collides with ToolConfig's internal state");
+        if paths::key(&output.path) == lockfile {
+            bail!("{shown} collides with ToolConfig's ownership records");
         }
         if output
             .path

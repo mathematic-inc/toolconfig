@@ -117,7 +117,8 @@ impl Fixture {
             .current_dir(self.path("project"))
             .env_remove("TOOLCONFIG_ROOT")
             .env("TOOLCONFIG_REPO_CACHE_DIR", self.path("project/.repos"))
-            .env("TOOLCONFIG_PKL_CACHE_DIR", self.path("project/.pkl-cache"));
+            .env("TOOLCONFIG_PKL_CACHE_DIR", self.path("project/.pkl-cache"))
+            .env("TOOLCONFIG_STATE_DIR", self.path("state"));
         self.isolate(&mut command);
         command
     }
@@ -208,7 +209,7 @@ fn cached_commit_does_not_fetch_again_and_clean_needs_no_remote() {
     let revision = fixture.commit();
     fixture.configure(&revision, "");
     fixture.ok(&["generate"]);
-    let state = fixture.read(".toolconfig-state/state.json");
+    let state = fixture.read(".toolconfig.lock");
     fs::remove_dir_all(fixture.path("source")).unwrap();
     assert_success(
         fixture
@@ -217,7 +218,7 @@ fn cached_commit_does_not_fetch_again_and_clean_needs_no_remote() {
             .output()
             .unwrap(),
     );
-    assert_eq!(fixture.read(".toolconfig-state/state.json"), state);
+    assert_eq!(fixture.read(".toolconfig.lock"), state);
     fs::remove_dir_all(fixture.path("project/.repos")).unwrap();
     fixture.ok(&["clean"]);
     assert!(!fixture.path("project/rustfmt.toml").exists());
@@ -303,11 +304,11 @@ fn unavailable_and_invalid_imports_preserve_generated_files() {
     fixture.configure(&revision, "");
     fixture.ok(&["generate"]);
     let before = fixture.read("rustfmt.toml");
-    let state = fixture.read(".toolconfig-state/state.json");
+    let state = fixture.read(".toolconfig.lock");
     fixture.configure(&"f".repeat(40), "");
     assert!(fixture.fail(&["generate"]).contains("Git failed"));
     assert_eq!(fixture.read("rustfmt.toml"), before);
-    assert_eq!(fixture.read(".toolconfig-state/state.json"), state);
+    assert_eq!(fixture.read(".toolconfig.lock"), state);
     fixture.write("source/.toolconfig.toml", "[\"*\"]\nindent_size = 0\n");
     let invalid = fixture.commit();
     fixture.configure(&invalid, "");
@@ -315,7 +316,7 @@ fn unavailable_and_invalid_imports_preserve_generated_files() {
     assert!(error.contains(&format!("{URL}@{invalid}")), "{error}");
     assert!(!error.contains(".repos"), "{error}");
     assert_eq!(fixture.read("rustfmt.toml"), before);
-    assert_eq!(fixture.read(".toolconfig-state/state.json"), state);
+    assert_eq!(fixture.read(".toolconfig.lock"), state);
 }
 
 #[test]

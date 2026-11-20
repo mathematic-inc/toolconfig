@@ -5,6 +5,8 @@ use std::process::{Command, Output};
 
 struct Project {
     dir: tempfile::TempDir,
+    /// Per-machine state, outside the project like the real default.
+    state: tempfile::TempDir,
 }
 
 impl Project {
@@ -13,7 +15,21 @@ impl Project {
             .prefix("toolconfig-test-")
             .tempdir()
             .unwrap();
-        Self { dir }
+        let state = tempfile::Builder::new()
+            .prefix("toolconfig-state-")
+            .tempdir()
+            .unwrap();
+        Self { dir, state }
+    }
+
+    fn command(&self, dir: &str) -> Command {
+        let mut command = Command::new(env!("CARGO_BIN_EXE_toolconfig"));
+        command
+            .current_dir(self.path(dir))
+            .env_remove("TOOLCONFIG_ROOT")
+            .env("TOOLCONFIG_PKL_CACHE_DIR", self.path(".pkl-cache"))
+            .env("TOOLCONFIG_STATE_DIR", self.state.path());
+        command
     }
 
     fn path(&self, relative: &str) -> PathBuf {
@@ -37,13 +53,7 @@ impl Project {
     }
 
     fn run_in(&self, dir: &str, args: &[&str]) -> Output {
-        Command::new(env!("CARGO_BIN_EXE_toolconfig"))
-            .args(args)
-            .current_dir(self.path(dir))
-            .env_remove("TOOLCONFIG_ROOT")
-            .env("TOOLCONFIG_PKL_CACHE_DIR", self.path(".pkl-cache"))
-            .output()
-            .unwrap()
+        self.command(dir).args(args).output().unwrap()
     }
 
     fn run(&self, args: &[&str]) -> Output {
@@ -128,12 +138,8 @@ fn generates_editorconfig_and_native_files() {
     insta::assert_snapshot!("ruff", project.read("python/ruff.toml"));
     insta::assert_snapshot!("oxfmt", project.read(".oxfmtrc.json"));
     insta::assert_snapshot!("oxlint", project.read(".oxlintrc.json"));
-    insta::assert_snapshot!("state", project.read(".toolconfig-state/state.json"));
-    assert!(
-        project
-            .read(".toolconfig-state/.gitignore")
-            .contains("!state.json")
-    );
+    insta::assert_snapshot!("state", project.read(".toolconfig.lock"));
+    assert!(!project.exists(".toolconfig-state"));
     // Generation is idempotent and works from any directory inside the project.
     let output = project.run_in("python", &["generate"]);
     assert!(output.status.success());
@@ -337,7 +343,7 @@ fn nested_projects_are_separate() {
     let output = project.run_in("tools", &["generate"]);
     assert!(output.status.success());
     assert!(project.exists("tools/rustfmt.toml"));
-    assert!(project.exists("tools/.toolconfig-state/state.json"));
+    assert!(project.exists("tools/.toolconfig.lock"));
 }
 
 #[test]
@@ -558,11 +564,9 @@ fn watch_ignores_package_cache_activity() {
             )
         ),
     );
-    let mut child = Command::new(env!("CARGO_BIN_EXE_toolconfig"))
+    let mut child = project
+        .command("")
         .args(["generate", "--watch"])
-        .current_dir(project.path(""))
-        .env_remove("TOOLCONFIG_ROOT")
-        .env("TOOLCONFIG_PKL_CACHE_DIR", project.path(".pkl-cache"))
         .env("TOOLCONFIG_WATCH_TRACE", "1")
         .stderr(Stdio::piped())
         .spawn()
@@ -853,5 +857,102 @@ fn vale_reads_one_configuration_file() {
             "vale reads one configuration file per run, so it cannot be enabled in both . and docs"
         ),
         "{error}"
+    );
+}
+
+#[test]
+fn ownership_records_move_from_the_legacy_state_directory() {
+    let project = Project::new();
+    project.write(
+        ".toolconfig.toml",
+        "root = true\n[toolconfig]\ntools = [\"rustfmt\"]\n",
+    );
+    project.ok(&["generate"]);
+    let lockfile = project.read(".toolconfig.lock");
+    let records = lockfile
+        .lines()
+        .filter_map(|line| {
+            let (key, rest) = line.split_once(" = { hash = \"")?;
+            Some(format!(
+                "{key}: {{ \"hash\": \"{}\" }}",
+                rest.strip_suffix("\" }")?
+            ))
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(records.len(), 2, "{lockfile}");
+    // Lay the project out as an earlier release left it.
+    std::fs::remove_file(project.path(".toolconfig.lock")).unwrap();
+    project
+        .write(
+            ".toolconfig-state/state.json",
+            &format!(
+                "{{ \"version\": 1, \"outputs\": {{ {} }} }}\n",
+                records.join(", ")
+            ),
+        )
+        .write(
+            ".toolconfig-state/.gitignore",
+            "# Written by ToolConfig. Commit state.json; the rest is local.\n*\n!.gitignore\n!state.json\n",
+        )
+        .write(".toolconfig-state/write.lock", "");
+    // Read-only commands understand the old layout without changing it.
+    assert!(project.ok(&["check"]).starts_with("Up to date"));
+    assert!(project.exists(".toolconfig-state/state.json"));
+    let output = project.run(&["generate"]);
+    assert!(output.status.success());
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.contains("moved ownership records"), "{stderr}");
+    assert!(stderr.contains("(0 changed)"), "{stderr}");
+    assert_eq!(project.read(".toolconfig.lock"), lockfile);
+    assert!(!project.exists(".toolconfig-state"));
+}
+
+#[test]
+fn writer_lock_and_journal_stay_out_of_the_project() {
+    let project = example();
+    project.ok(&["generate"]);
+    let entries = std::fs::read_dir(project.path(""))
+        .unwrap()
+        .map(|entry| entry.unwrap().file_name().into_string().unwrap())
+        .filter(|name| name.contains("lock") || name.contains("journal"))
+        .collect::<Vec<_>>();
+    assert_eq!(entries, [".toolconfig.lock"]);
+    let projects = std::fs::read_dir(project.state.path().join("projects"))
+        .unwrap()
+        .collect::<Vec<_>>();
+    assert_eq!(projects.len(), 1);
+    let output = project
+        .command("")
+        .args(["generate"])
+        .env("TOOLCONFIG_STATE_DIR", project.path("machine"))
+        .output()
+        .unwrap();
+    assert!(!output.status.success());
+    assert!(String::from_utf8_lossy(&output.stderr).contains("must not be inside the project"));
+}
+
+#[test]
+fn a_second_writer_is_refused() {
+    use std::io::{BufRead, BufReader};
+    use std::process::Stdio;
+
+    let project = example();
+    let mut child = project
+        .command("")
+        .args(["generate", "--watch"])
+        .stderr(Stdio::piped())
+        .spawn()
+        .unwrap();
+    let started = BufReader::new(child.stderr.take().unwrap())
+        .lines()
+        .map_while(Result::ok)
+        .any(|line| line.contains("generated"));
+    let output = project.run(&["generate"]);
+    let _ = child.kill();
+    let _ = child.wait();
+    assert!(started, "watch mode never generated");
+    assert!(!output.status.success());
+    assert!(
+        String::from_utf8_lossy(&output.stderr).contains("another ToolConfig writer is active")
     );
 }

@@ -166,7 +166,13 @@ fn build(root: &Path) -> Result<Plan> {
 fn state_root() -> Option<PathBuf> {
     let cwd = std::env::current_dir().ok()?.canonicalize().ok()?;
     cwd.ancestors()
-        .find(|ancestor| ancestor.join(paths::STATE_DIR).join("state.json").is_file())
+        .find(|ancestor| {
+            ancestor.join(paths::LOCKFILE).is_file()
+                || ancestor
+                    .join(paths::LEGACY_STATE_DIR)
+                    .join("state.json")
+                    .is_file()
+        })
         .map(Path::to_path_buf)
 }
 
