@@ -334,10 +334,10 @@ is `all` or `fast`, and `linters.disable` does not name it. shellcheck's
 `["*"]`; an array repeats its key, as in `source-path = ["SCRIPTDIR", "lib"]`.
 tflint's `.tflint.hcl` is written as HCL reads its JSON form:
 `["*.tf".tflint.plugin.aws]` becomes `plugin "aws" { ... }`. ToolConfig knows
-which objects are blocks in tflint's own schema and its bundled terraform
-ruleset; for a plugin's nested block, such as `assume_role`, set
-`tflint.format = "json"` to write `.tflint.json`, which each plugin reads by its
-own schema.
+which objects are blocks from tflint's own schema and from the terraform
+ruleset that tflint bundles; for a plugin's nested block, such as `assume_role`,
+set `tflint.format = "json"` to write `.tflint.json`, which each plugin reads by
+its own schema.
 
 ## Vale
 

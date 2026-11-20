@@ -47,8 +47,8 @@ For each native file:
 
 3. Move the options into a table under the `["*"]` section, keeping their
    structure: `["*".ruff]`, `["*".ruff.lint]`, `[["*".gitleaks.allowlists]]`.
-   Options that only apply to some file types can go under that type's section,
-   such as `["*.md".prettier]`. A `.tflint.hcl` moves in its JSON form:
+   Options for only some files can go under a section for those files, such as
+   `["*.md".prettier]`. A `.tflint.hcl` moves in its JSON form:
    `rule "x" { enabled = false }` becomes `["*.tf".tflint.rule.x]` with
    `enabled = false`. A `.vale.ini` moves into `["*".vale]`, and its `[*.md]`
    section becomes `["*".vale."*.md"]`.

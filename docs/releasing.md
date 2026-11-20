@@ -2,7 +2,7 @@
 
 Versions are `YEAR.MONTH.MICRO`, such as `2026.10.0`: the release's year and
 month, without a leading zero, and a counter that starts at 0 each month. They
-are valid semver, so Cargo orders them correctly.
+are valid semantic versions, so Cargo orders them correctly.
 
 1. Update `version` in `Cargo.toml`, the `CHANGELOG.md` entry, and the versioned
    URLs in `README.md` and `examples/pkl`, then merge to `main`.
