@@ -323,6 +323,7 @@ fn unavailable_and_invalid_imports_preserve_generated_files() {
 fn invalid_specs_fail_without_fetching_or_disclosing_credentials() {
     let fixture = Fixture::new();
     for spec in [
+        // kingfisher:ignore The test checks that errors do not repeat this fixture password.
         "{ git = 'https://reader:fixture-secret@example.test/repo', rev = 'main' }",
         "{ git = 'https://example.test/repo?token=fixture-secret', rev = 'main' }",
         "{ git = 'https://example.test/repo', rev = 'main' }",
