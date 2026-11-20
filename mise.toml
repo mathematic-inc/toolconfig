@@ -3,6 +3,7 @@ all_compile = false
 
 [tools]
 "aqua:EmbarkStudios/cargo-deny" = "0.20.2"
+"aqua:owenlamont/ryl" = "0.30.0"
 cargo-binstall = "1.26.2"
 go = "1.27.3"
 golangci-lint = "2.15.0"

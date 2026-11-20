@@ -835,6 +835,17 @@ fn shellcheck_writes_its_rc_file() {
 }
 
 #[test]
+fn ryl_rules_go_under_lint() {
+    let project = Project::new();
+    project.write(
+        ".toolconfig.toml",
+        "root = true\n[toolconfig]\ntools = [\"ryl\"]\n[\"*\"]\nend_of_line = \"lf\"\nindent_style = \"space\"\nindent_size = 2\n[\"*\".ryl.lint.rules]\ndocument-start = \"disable\"\n",
+    );
+    project.ok(&["generate"]);
+    insta::assert_snapshot!("ryl", project.read(".ryl.toml"));
+}
+
+#[test]
 fn vale_reads_one_configuration_file() {
     let project = Project::new();
     project.write(

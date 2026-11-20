@@ -1,5 +1,18 @@
 # Changelog
 
+## 2026.11.5 (unreleased)
+
+### Bug fixes
+
+- ryl's rules go under `lint.rules`, where ryl 0.25 and later read them. ryl ignored the
+  generated top-level `rules` when a source also set `ryl.lint.rules`, and warned that `rules`
+  is deprecated.
+
+### Changes
+
+- ryl has no `yaml` format, because ryl deprecates yamllint YAML configuration. Remove
+  `format = "yaml"` from `[toolconfig.ryl]` to write `.ryl.toml`.
+
 ## 2026.11.4 (2026-11-20)
 
 ### Changes

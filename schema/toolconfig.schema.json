@@ -746,8 +746,7 @@
             "format": {
               "description": "The native format to write.",
               "enum": [
-                "toml",
-                "yaml"
+                "toml"
               ]
             },
             "path": {
