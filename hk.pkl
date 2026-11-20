@@ -19,6 +19,4 @@ exclude =
 
 steps {
   ["toolconfig"] { check = "cargo run --quiet -- generate --strict" }
-  // The step of the organization sets `workspace_indicator = null`, so `{{workspace}}` has no value.
-  ["cargo-deny"] { dir = "{{root}}" }
 }
