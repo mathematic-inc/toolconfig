@@ -1,4 +1,4 @@
-name: Prebuilt binaries
+name: Prebuilt
 
 on:
   workflow_call:
@@ -10,8 +10,7 @@ on:
         type: boolean
         default: false
 
-permissions:
-  contents: read
+permissions: {}
 
 defaults:
   run:
@@ -29,7 +28,7 @@ jobs:
     if: ${{ !inputs.verify-install }}
     permissions:
       contents: read
-    name: Build ${{ matrix.target }}
+    name: Build (${{ matrix.target }})
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 90
     strategy:
@@ -53,15 +52,18 @@ jobs:
           - target: aarch64-pc-windows-msvc
             runner: windows-11-arm
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
           ref: ${{ inputs.ref || github.sha }}
-      - uses: jdx/mise-action@b44d12e7d0d8ee7461bb893e1b1993500433185b # v5.2.7
+      - name: Install tools
+        uses: jdx/mise-action@b44d12e7d0d8ee7461bb893e1b1993500433185b # v5.2.7
         with:
           install_args: rust python
           cache: false
-      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+      - name: Restore Cargo cache
+        uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with:
           key: release-${{ matrix.target }}
       - name: Install Linux build dependencies
@@ -86,13 +88,14 @@ jobs:
           rustup target add "$TARGET"
           cargo test --locked --all-targets --target "$TARGET"
           python scripts/package.py --target "$TARGET" --output dist
-      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+      - name: Upload binary assets
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: binary-${{ matrix.target }}
           path: dist/*
           if-no-files-found: error
 
-  package-consistency:
+  verify-asset-consistency:
     if: ${{ !inputs.verify-install }}
     permissions:
       contents: read
@@ -101,39 +104,43 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
           ref: ${{ inputs.ref || github.sha }}
-      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+      - name: Download binary assets
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           pattern: binary-*
           path: dist
           merge-multiple: true
-      - name: Compare Pkl packages and schemas from every platform build
+      - name: Compare Pkl packages and schemas across platforms
         run: python3 scripts/release/verify-assets.py dist
 
-  smoke:
+  run-archive:
     if: ${{ !inputs.verify-install }}
     permissions:
       contents: read
     needs: build
-    name: Run archive ${{ matrix.target }}
+    name: Run archive (${{ matrix.target }})
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix: *targets
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
           ref: ${{ inputs.ref || github.sha }}
-      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+      - name: Download binary assets
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: binary-${{ matrix.target }}
           path: dist
-      - name: Verify checksum and generate the examples with the extracted executable
+      - name: Verify checksum and generate examples
         env:
           TARGET: ${{ matrix.target }}
         run: |
@@ -164,22 +171,24 @@ jobs:
             (cd "$example" && "$executable" generate && "$executable" check)
           done
 
-  install:
+  install-without-compiling:
     if: inputs.verify-install
     permissions:
       contents: read
-    name: Install without compiling ${{ matrix.target }}
+    name: Install without compiling (${{ matrix.target }})
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix: *targets
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
           ref: ${{ inputs.ref || github.sha }}
-      - uses: jdx/mise-action@b44d12e7d0d8ee7461bb893e1b1993500433185b # v5.2.7
+      - name: Install tools
+        uses: jdx/mise-action@b44d12e7d0d8ee7461bb893e1b1993500433185b # v5.2.7
         with:
           install_args: cargo-binstall
           cache: false
