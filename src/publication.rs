@@ -514,7 +514,6 @@ impl Drop for Project {
     }
 }
 
-/// Outputs listed in a managed `.gitignore` block.
 fn ignored_outputs(plan: &Plan) -> Vec<PathBuf> {
     plan.outputs
         .iter()

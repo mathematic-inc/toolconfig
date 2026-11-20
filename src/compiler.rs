@@ -21,7 +21,6 @@ pub(crate) struct Output {
     pub(crate) bytes: Vec<u8>,
     pub(crate) source: PathBuf,
     pub(crate) explanation: Vec<Explained>,
-    /// `.editorconfig` and files that set committed. The managed `.gitignore` block omits them.
     pub(crate) committed: bool,
 }
 
