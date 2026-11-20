@@ -2,3 +2,9 @@
 /dist/
 __pycache__/
 *.snap.new
+
+# BEGIN TOOLCONFIG GENERATED FILES
+.toolconfig-stage-*
+/ruff.toml
+/rustfmt.toml
+# END TOOLCONFIG GENERATED FILES

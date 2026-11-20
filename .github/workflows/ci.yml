@@ -45,6 +45,13 @@ jobs:
           persist-credentials: false
       - uses: jdx/mise-action@b44d12e7d0d8ee7461bb893e1b1993500433185b # v5.2.7
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+      - name: Build
+        run: cargo build --locked
+      # Check before generate, because generate rewrites a stale committed file.
+      - name: Check this repository's own generated files
+        run: target/debug/toolconfig check --strict
+      - name: Generate this repository's tool configuration
+        run: target/debug/toolconfig generate --strict
       - name: Format
         run: cargo fmt --check
       - name: Lint
@@ -54,11 +61,7 @@ jobs:
       - name: Test
         run: cargo test --locked --all-targets
       - name: Run real tools against generated configuration
-        run: |
-          cargo build --locked
-          python tests/native/run.py --toolconfig target/debug/toolconfig
-      - name: Check this repository's own generated files
-        run: target/debug/toolconfig check --strict
+        run: python tests/native/run.py --toolconfig target/debug/toolconfig
       - name: Verify package
         run: cargo package --locked
 
