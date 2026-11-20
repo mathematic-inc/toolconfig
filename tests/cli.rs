@@ -254,6 +254,48 @@ fn editorconfig(path: &Path) -> Vec<(String, String)> {
 }
 
 #[test]
+fn pkl_entries_with_only_elements_are_arrays() {
+    let project = Project::new();
+    project.write(
+        ".toolconfig.pkl",
+        &format!(
+            r#"amends "package://github.com/mathematic-inc/toolconfig/releases/download/v{version}/toolconfig@{version}#/ToolConfig.pkl"
+
+root = true
+
+toolconfig {{
+  tools = List("cargo-deny")
+}}
+
+sections {{
+  ["*"] {{
+    `cargo-deny` {{
+      licenses {{
+        ["exceptions"] {{
+          new {{ crate = "x"; allow = List("ISC") }}
+        }}
+        clarify {{
+          new {{
+            crate = "y"
+            expression = "MIT"
+            ["license-files"] {{
+              new {{ path = "LICENSE"; hash = 0xbd0eed23 }}
+            }}
+          }}
+        }}
+      }}
+    }}
+  }}
+}}
+"#,
+            version = env!("CARGO_PKG_VERSION")
+        ),
+    );
+    project.ok(&["generate"]);
+    insta::assert_snapshot!("cargo_deny_pkl", project.read("deny.toml"));
+}
+
+#[test]
 fn check_reports_drift_and_generate_protects_edits() {
     let project = example();
     project.ok(&["generate"]);

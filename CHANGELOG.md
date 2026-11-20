@@ -7,6 +7,9 @@
 - ryl's rules go under `lint.rules`, where ryl 0.25 and later read them. ryl ignored the
   generated top-level `rules` when a source also set `ryl.lint.rules`, and warned that `rules`
   is deprecated.
+- In a Pkl source, an entry that holds only elements, such as
+  `["license-files"] { new { path = "LICENSE" } }`, now becomes an array. It was an empty table.
+  ToolConfig now embeds pklr 6.0.3.
 
 ### Changes
 

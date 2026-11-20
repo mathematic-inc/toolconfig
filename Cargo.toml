@@ -49,7 +49,7 @@ ec4rs = "1.2.0"
 fs2 = "0.4.3"
 ignore = "0.4.34"
 notify = "8.2.1"
-pklr = "=5.2.3"
+pklr = "=6.0.3"
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = { version = "1.0.154", features = ["float_roundtrip", "preserve_order"] }
 sha2 = "0.11.1"
